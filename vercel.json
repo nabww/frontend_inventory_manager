@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "mysql-production-45c2.up.railway.app"
+      "destination": "https://backendinventorymanager-production.up.railway.app/"
     }
   ]
 }
