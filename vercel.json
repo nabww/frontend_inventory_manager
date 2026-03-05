@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "gondola.proxy.rlwy.net:34576*"
+      "destination": "mysql-production-45c2.up.railway.app"
     }
   ]
 }
