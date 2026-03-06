@@ -59,6 +59,8 @@ export const refApi = {
     f.append("file", file);
     return api.post("/facilities/import", f);
   },
+  facility: (id) => api.get(`/facilities/${id}`),
+  auditLogs: (p) => api.get("/audit-logs", { params: p }),
   auditLogs: (p) => api.get("/audit-logs", { params: p }),
 };
 

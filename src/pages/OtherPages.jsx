@@ -2,7 +2,7 @@
 // VerifyPage
 // ================================================================
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { verifyApi, refApi, userApi, authApi, getMsg } from "../api";
 import { AppShell } from "../components/layout";
 import {
@@ -172,6 +172,7 @@ export function VerifyPage() {
 export function FacilitiesPage() {
   const { isOfficer, isAdmin } = useAuth();
   const [facilities, setFacilities] = useState([]);
+  const navigate = useNavigate();
   const [counties, setCounties] = useState([]);
   const [pag, setPag] = useState({
     total: 0,
@@ -365,7 +366,10 @@ export function FacilitiesPage() {
                 </tr>
               ) : (
                 facilities.map((f) => (
-                  <tr key={f.id}>
+                  <tr
+                    key={f.id}
+                    style={{ cursor: "pointer" }}
+                    onClick={() => navigate(`/facilities/${f.id}`)}>
                     <td className="fw6">{f.mfl_code}</td>
                     <td>{f.name}</td>
                     <td className="td-dim">{f.county_name}</td>
@@ -918,6 +922,7 @@ function UserFormModal({ user, onClose, onSuccess }) {
     </Modal>
   );
 }
+
 // ================================================================
 // AuditLogPage
 // ================================================================

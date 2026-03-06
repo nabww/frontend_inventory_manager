@@ -24,6 +24,83 @@ const NAV = [
   { to: "/facilities", icon: <RiHospitalLine />, label: "Facilities" },
 ];
 
+const Logo = ({ size = 34 }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 40 40"
+    fill="none"
+    width={size}
+    height={size}
+    style={{ flexShrink: 0 }}>
+    <defs>
+      <linearGradient
+        id="bg"
+        x1="0"
+        y1="0"
+        x2="40"
+        y2="40"
+        gradientUnits="userSpaceOnUse">
+        <stop offset="0%" stopColor="#7c3aed" />
+        <stop offset="100%" stopColor="#a78bfa" />
+      </linearGradient>
+      <linearGradient id="shine" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stopColor="#ffffff" stopOpacity="0.18" />
+        <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
+      </linearGradient>
+    </defs>
+    <rect width="40" height="40" rx="10" fill="url(#bg)" />
+    <rect width="40" height="40" rx="10" fill="url(#shine)" />
+    <rect
+      x="9"
+      y="7"
+      width="16"
+      height="22"
+      rx="2.5"
+      stroke="white"
+      strokeWidth="1.8"
+      fill="none"
+      opacity="0.95"
+    />
+    <rect
+      x="11.5"
+      y="10"
+      width="11"
+      height="13"
+      rx="1"
+      fill="white"
+      opacity="0.2"
+    />
+    <polyline
+      points="12.5,17 14.5,17 15.5,13.5 16.5,20.5 17.5,15 18.5,17 21,17"
+      stroke="white"
+      strokeWidth="1.4"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      fill="none"
+    />
+    <circle cx="17" cy="26" r="1.2" fill="white" opacity="0.8" />
+    <path
+      d="M28 12 Q31 9 34 12"
+      stroke="white"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      fill="none"
+      opacity="0.5"
+    />
+    <path
+      d="M29.5 14.5 Q31 13 32.5 14.5"
+      stroke="white"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      fill="none"
+      opacity="0.75"
+    />
+    <circle cx="31" cy="17" r="1.3" fill="white" opacity="0.95" />
+  </svg>
+);
+
+export { Logo };
+
 export const Sidebar = ({ open, onClose }) => {
   const { user, logout, isAdmin } = useAuth();
   const navigate = useNavigate();
@@ -47,7 +124,6 @@ export const Sidebar = ({ open, onClose }) => {
 
   return (
     <>
-      {/* Overlay — mobile only */}
       {open && (
         <div
           onClick={onClose}
@@ -65,12 +141,11 @@ export const Sidebar = ({ open, onClose }) => {
 
       <aside className={`sidebar ${open ? "sidebar-open" : ""}`}>
         <div className="sidebar-brand">
-          <div className="brand-icon">💊</div>
+          <Logo size={34} />
           <div style={{ flex: 1, minWidth: 0 }}>
             <div className="brand-name">EMR Inventory</div>
             <div className="brand-sub">Device Management</div>
           </div>
-          {/* Close button — mobile only */}
           <button
             className="btn btn-ghost btn-icon btn-sm sidebar-close"
             onClick={onClose}>
@@ -145,7 +220,6 @@ export const Topbar = ({ title, onMenuClick }) => {
   const { isDark, toggle } = useTheme();
   return (
     <header className="topbar">
-      {/* Hamburger — mobile only */}
       <button
         className="btn btn-ghost btn-icon hamburger"
         onClick={onMenuClick}
@@ -167,7 +241,6 @@ export const Topbar = ({ title, onMenuClick }) => {
 export const AppShell = ({ title, children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // Close sidebar on resize to desktop
   useEffect(() => {
     const handler = () => {
       if (window.innerWidth >= 768) setSidebarOpen(false);
