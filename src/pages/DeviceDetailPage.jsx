@@ -399,8 +399,8 @@ export default function DeviceDetailPage() {
             <F label="Phone Number" value={device.phone_number} />
             <F label="SIM Serial" value={device.sim_serial} />
             <F label="Network" value={device.network} />
-            <F label="PIN" value={device.pin ? "••••" : null} />
-            <F label="PUK" value={device.puk ? "••••" : null} />
+            <F label="PIN" value={device.pin} />
+            <F label="PUK" value={device.puk} />
           </>
         ) : (
           <div
