@@ -146,7 +146,7 @@ export const Sidebar = ({ mobileOpen, onClose }) => {
     <>
       <aside className={`sidebar${mobileOpen ? " sidebar-open" : ""}`}>
         <div className="sidebar-brand">
-          <div className="brand-icon">💊</div>
+          <Logo size={36} />
           <div style={{ flex: 1 }}>
             <div className="brand-name">EMR Inventory</div>
             <div className="brand-sub">Device Management</div>
