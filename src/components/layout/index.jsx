@@ -137,7 +137,7 @@ export const Sidebar = () => {
     <>
       <aside className="sidebar">
         <div className="sidebar-brand">
-          <div className="brand-icon">💊</div>
+          <Logo size={36} />
           <div>
             <div className="brand-name">EMR Inventory</div>
             <div className="brand-sub">Device Management</div>
@@ -169,6 +169,16 @@ export const Sidebar = () => {
                   <RiTeamLine />
                 </span>
                 Users
+              </NavLink>
+              <NavLink
+                to="/audit-log"
+                className={({ isActive }) =>
+                  `nav-link ${isActive ? "active" : ""}`
+                }>
+                <span className="icon">
+                  <RiFileList3Line />
+                </span>
+                Audit Log
               </NavLink>
             </>
           )}

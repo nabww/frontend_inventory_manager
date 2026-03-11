@@ -19,10 +19,9 @@ import {
   RiDeleteBinLine,
   RiEyeLine,
   RiEditLine,
-  RiFilterLine,
+  RiLockLine,
 } from "react-icons/ri";
 import { useAuth } from "../contexts";
-import { getMsg as gm } from "../api";
 import { format } from "date-fns";
 import toast from "react-hot-toast";
 import DeviceFormModal from "./DeviceFormModal";
@@ -68,7 +67,7 @@ export default function DeviceListPage() {
         setDevices(r.data.data);
         setPag(r.data.pagination);
       } catch (e) {
-        toast.error(gm(e, "Failed to load devices"));
+        toast.error(getMsg(e, "Failed to load devices"));
       } finally {
         setLoading(false);
       }
@@ -89,7 +88,7 @@ export default function DeviceListPage() {
       setDeleteId(null);
       fetch(pag.page);
     } catch (e) {
-      toast.error(gm(e, "Delete failed"));
+      toast.error(getMsg(e, "Delete failed"));
     } finally {
       setDeleting(false);
     }
@@ -121,8 +120,6 @@ export default function DeviceListPage() {
       const r = await deviceApi.import(file);
       const { imported, skipped } = r.data.data;
       toast.success(`Imported ${imported}, skipped ${skipped}`);
-      if (errors?.length)
-        errors.forEach((e) => toast.error(`Row ${e.row}: ${e.error}`));
       fetch(1);
     } catch (e) {
       toast.error(getMsg(e, "Import failed"));
@@ -134,6 +131,8 @@ export default function DeviceListPage() {
     setEditDevice(null);
     fetch(pag.page);
   };
+
+  const canEdit = (d) => isOfficer && (!d.locked || isAdmin);
 
   return (
     <AppShell title="Devices">
@@ -179,7 +178,6 @@ export default function DeviceListPage() {
         </div>
       </div>
 
-      {/* Filters */}
       <div className="card mb-16">
         <div className="card-body" style={{ padding: "12px 18px" }}>
           <div className="filter-bar">
@@ -262,9 +260,29 @@ export default function DeviceListPage() {
                 </tr>
               ) : (
                 devices.map((d) => (
-                  <tr key={d.id}>
+                  <tr
+                    key={d.id}
+                    style={d.locked ? { background: "#fff9f9" } : {}}>
                     <td>
-                      <span className="fw6">{d.serial_number}</span>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 6,
+                        }}>
+                        <span className="fw6">{d.serial_number}</span>
+                        {d.locked && (
+                          <span
+                            title="Locked — loss report pending"
+                            style={{
+                              color: "#dc2626",
+                              display: "flex",
+                              alignItems: "center",
+                            }}>
+                            <RiLockLine size={12} />
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td>{d.model || <span className="td-dim">—</span>}</td>
                     <td>
@@ -295,7 +313,7 @@ export default function DeviceListPage() {
                           onClick={() => navigate(`/devices/${d.id}`)}>
                           <RiEyeLine size={14} />
                         </button>
-                        {isOfficer && (
+                        {canEdit(d) && (
                           <button
                             className="btn btn-ghost btn-icon btn-sm"
                             title="Edit"
