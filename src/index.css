@@ -1037,6 +1037,21 @@ tbody td {
   align-items: center;
 }
 
+/* Sidebar overlay (mobile only) */
+.sidebar-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 99;
+}
+.sidebar-close {
+  display: none;
+}
+.hamburger {
+  display: none;
+}
+
 /* ── Mobile responsive ───────────────────────────────────────── */
 @media (max-width: 767px) {
   /* Sidebar slides in from left, hidden by default */

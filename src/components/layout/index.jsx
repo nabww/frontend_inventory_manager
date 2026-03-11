@@ -11,12 +11,15 @@ import {
   RiHospitalLine,
   RiFileList3Line,
   RiLockPasswordLine,
+  RiMenuLine,
+  RiCloseLine,
 } from "react-icons/ri";
 import { useAuth } from "../../contexts";
 import { useTheme } from "../../contexts";
 import { authApi } from "../../api";
 import toast from "react-hot-toast";
 
+// ── Change Password Modal ─────────────────────────────────────────────────────
 const ChangePasswordModal = ({ onClose }) => {
   const [form, setForm] = useState({
     currentPassword: "",
@@ -108,6 +111,7 @@ const ChangePasswordModal = ({ onClose }) => {
   );
 };
 
+// ── Nav items ─────────────────────────────────────────────────────────────────
 const NAV = [
   { to: "/dashboard", icon: <RiDashboardLine />, label: "Dashboard" },
   { to: "/devices", icon: <RiTabletLine />, label: "Devices" },
@@ -115,7 +119,8 @@ const NAV = [
   { to: "/facilities", icon: <RiHospitalLine />, label: "Facilities" },
 ];
 
-export const Sidebar = () => {
+// ── Sidebar ───────────────────────────────────────────────────────────────────
+export const Sidebar = ({ mobileOpen, onClose }) => {
   const { user, logout, isAdmin } = useAuth();
   const navigate = useNavigate();
   const [showPwModal, setShowPwModal] = useState(false);
@@ -133,15 +138,25 @@ export const Sidebar = () => {
     navigate("/login");
   };
 
+  const handleNavClick = () => {
+    if (onClose) onClose();
+  };
+
   return (
     <>
-      <aside className="sidebar">
+      <aside className={`sidebar${mobileOpen ? " sidebar-open" : ""}`}>
         <div className="sidebar-brand">
-          <Logo size={36} />
-          <div>
+          <div className="brand-icon">💊</div>
+          <div style={{ flex: 1 }}>
             <div className="brand-name">EMR Inventory</div>
             <div className="brand-sub">Device Management</div>
           </div>
+          <button
+            className="btn btn-ghost btn-icon sidebar-close"
+            onClick={onClose}
+            title="Close menu">
+            <RiCloseLine size={20} />
+          </button>
         </div>
 
         <nav className="sidebar-nav">
@@ -150,6 +165,7 @@ export const Sidebar = () => {
             <NavLink
               key={item.to}
               to={item.to}
+              onClick={handleNavClick}
               className={({ isActive }) =>
                 `nav-link ${isActive ? "active" : ""}`
               }>
@@ -162,6 +178,7 @@ export const Sidebar = () => {
               <div className="nav-label">Admin</div>
               <NavLink
                 to="/users"
+                onClick={handleNavClick}
                 className={({ isActive }) =>
                   `nav-link ${isActive ? "active" : ""}`
                 }>
@@ -172,6 +189,7 @@ export const Sidebar = () => {
               </NavLink>
               <NavLink
                 to="/audit-log"
+                onClick={handleNavClick}
                 className={({ isActive }) =>
                   `nav-link ${isActive ? "active" : ""}`
                 }>
@@ -213,10 +231,17 @@ export const Sidebar = () => {
   );
 };
 
-export const Topbar = ({ title }) => {
+// ── Topbar ────────────────────────────────────────────────────────────────────
+export const Topbar = ({ title, onMenuClick }) => {
   const { isDark, toggle } = useTheme();
   return (
     <header className="topbar">
+      <button
+        className="btn btn-ghost btn-icon hamburger"
+        onClick={onMenuClick}
+        title="Open menu">
+        <RiMenuLine size={22} />
+      </button>
       <span className="topbar-title">{title}</span>
       <div className="topbar-space" />
       <button
@@ -229,6 +254,7 @@ export const Topbar = ({ title }) => {
   );
 };
 
+// ── Logo ──────────────────────────────────────────────────────────────────────
 export const Logo = ({ size = 40 }) => (
   <svg
     width={size}
@@ -286,12 +312,23 @@ export const Logo = ({ size = 40 }) => (
   </svg>
 );
 
-export const AppShell = ({ title, children }) => (
-  <div className="shell">
-    <Sidebar />
-    <div className="main">
-      <Topbar title={title} />
-      <main className="page fade">{children}</main>
+// ── AppShell ──────────────────────────────────────────────────────────────────
+export const AppShell = ({ title, children }) => {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  return (
+    <div className="shell">
+      {sidebarOpen && (
+        <div
+          className="sidebar-overlay"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+      <Sidebar mobileOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <div className="main">
+        <Topbar title={title} onMenuClick={() => setSidebarOpen(true)} />
+        <main className="page fade">{children}</main>
+      </div>
     </div>
-  </div>
-);
+  );
+};
