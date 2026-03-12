@@ -72,6 +72,7 @@ export const deviceApi = {
   recover: (id, d) => api.post(`/devices/${id}/recover`, d),
   lossDoc: (id, type) =>
     api.get(`/devices/${id}/loss-documents/${type}`, { responseType: "blob" }),
+  unverified: (p) => api.get("/devices/unverified", { params: p }),
 };
 
 export const userApi = {
@@ -82,4 +83,12 @@ export const userApi = {
 
 export const verifyApi = {
   list: (p) => api.get("/verifications", { params: p }),
+};
+
+export const simApi = {
+  list: (p) => api.get("/sims", { params: p }),
+  export: () => api.get("/sims/export", { responseType: "blob" }),
+  update: (id, d) => api.patch(`/sims/${id}`, d),
+  link: (id, deviceId) => api.post(`/sims/${id}/link`, { deviceId }),
+  unlink: (id) => api.post(`/sims/${id}/unlink`),
 };

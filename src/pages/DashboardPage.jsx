@@ -218,7 +218,7 @@ export default function DashboardPage() {
             </span>
             <button
               className="btn btn-outline btn-sm"
-              onClick={() => navigate("/verify")}>
+              onClick={() => navigate("/verify?unverified=1")}>
               Verify
             </button>
           </div>

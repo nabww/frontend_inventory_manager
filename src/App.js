@@ -13,6 +13,7 @@ import {
   FacilitiesPage,
   UsersPage,
   AuditLogPage,
+  SimsPage,
 } from "./pages/OtherPages";
 import FacilityDetailPage from "./pages/FacilityDetailPage";
 
@@ -60,6 +61,14 @@ export default function App() {
                 <ProtectedRoute>
                   <VerifyPage />
                 </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/sims"
+              element={
+                <AdminRoute>
+                  <SimsPage />
+                </AdminRoute>
               }
             />
             <Route

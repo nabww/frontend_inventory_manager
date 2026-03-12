@@ -13,6 +13,7 @@ import {
   RiLockPasswordLine,
   RiMenuLine,
   RiCloseLine,
+  RiSimCard2Line,
 } from "react-icons/ri";
 import { useAuth } from "../../contexts";
 import { useTheme } from "../../contexts";
@@ -119,6 +120,12 @@ const NAV = [
   { to: "/facilities", icon: <RiHospitalLine />, label: "Facilities" },
 ];
 
+const ADMIN_NAV = [
+  { to: "/sims", icon: <RiSimCard2Line />, label: "SIM Cards" },
+  { to: "/users", icon: <RiTeamLine />, label: "Users" },
+  { to: "/audit-log", icon: <RiFileList3Line />, label: "Audit Log" },
+];
+
 // ── Sidebar ───────────────────────────────────────────────────────────────────
 export const Sidebar = ({ mobileOpen, onClose }) => {
   const { user, logout, isAdmin } = useAuth();
@@ -176,28 +183,18 @@ export const Sidebar = ({ mobileOpen, onClose }) => {
           {isAdmin && (
             <>
               <div className="nav-label">Admin</div>
-              <NavLink
-                to="/users"
-                onClick={handleNavClick}
-                className={({ isActive }) =>
-                  `nav-link ${isActive ? "active" : ""}`
-                }>
-                <span className="icon">
-                  <RiTeamLine />
-                </span>
-                Users
-              </NavLink>
-              <NavLink
-                to="/audit-log"
-                onClick={handleNavClick}
-                className={({ isActive }) =>
-                  `nav-link ${isActive ? "active" : ""}`
-                }>
-                <span className="icon">
-                  <RiFileList3Line />
-                </span>
-                Audit Log
-              </NavLink>
+              {ADMIN_NAV.map((item) => (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  onClick={handleNavClick}
+                  className={({ isActive }) =>
+                    `nav-link ${isActive ? "active" : ""}`
+                  }>
+                  <span className="icon">{item.icon}</span>
+                  {item.label}
+                </NavLink>
+              ))}
             </>
           )}
         </nav>
