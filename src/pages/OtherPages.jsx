@@ -269,6 +269,7 @@ export function VerifyPage() {
 // ================================================================
 export function FacilitiesPage() {
   const { isOfficer, isAdmin } = useAuth();
+  const navigate = useNavigate();
   const [facilities, setFacilities] = useState([]);
   const [counties, setCounties] = useState([]);
   const [pag, setPag] = useState({
