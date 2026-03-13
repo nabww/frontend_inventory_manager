@@ -34,6 +34,7 @@ import {
   RiLinkM,
   RiLinkUnlinkM,
   RiDownloadLine,
+  RiMailSendLine,
 } from "react-icons/ri";
 import { format } from "date-fns";
 import toast from "react-hot-toast";
@@ -697,6 +698,25 @@ export function UsersPage() {
   const [editUser, setEditUser] = useState(null);
   const [delId, setDelId] = useState(null);
   const [deleting, setDeleting] = useState(false);
+  const [resending, setResending] = useState(null);
+
+  const handleResend = async (u) => {
+    if (
+      !window.confirm(
+        `Reset password and resend welcome email to ${u.full_name}?`,
+      )
+    )
+      return;
+    setResending(u.id);
+    try {
+      await userApi.resendWelcome(u.id);
+      toast.success(`Welcome email resent to ${u.email}`);
+    } catch (e) {
+      toast.error(getMsg(e, "Failed to resend"));
+    } finally {
+      setResending(null);
+    }
+  };
 
   const fetchUsers = useCallback(
     async (page = 1) => {
@@ -868,6 +888,17 @@ export function UsersPage() {
                       </td>
                       <td>
                         <div style={{ display: "flex", gap: 3 }}>
+                          <button
+                            className="btn btn-ghost btn-icon btn-sm"
+                            title="Resend welcome email"
+                            onClick={() => handleResend(u)}
+                            disabled={resending === u.id}>
+                            {resending === u.id ? (
+                              <Spinner size={13} />
+                            ) : (
+                              <RiMailSendLine size={14} />
+                            )}
+                          </button>
                           <button
                             className="btn btn-ghost btn-icon btn-sm"
                             onClick={() => {
