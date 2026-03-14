@@ -75,12 +75,6 @@ export const deviceApi = {
   unverified: (p) => api.get("/devices/unverified", { params: p }),
 };
 
-export const userApi = {
-  list: (p) => api.get("/users", { params: p }),
-  update: (id, d) => api.patch(`/users/${id}`, d),
-  remove: (id) => api.delete(`/users/${id}`),
-};
-
 export const verifyApi = {
   list: (p) => api.get("/verifications", { params: p }),
 };
@@ -91,4 +85,11 @@ export const simApi = {
   update: (id, d) => api.patch(`/sims/${id}`, d),
   link: (id, deviceId) => api.post(`/sims/${id}/link`, { deviceId }),
   unlink: (id) => api.post(`/sims/${id}/unlink`),
+};
+
+export const userApi = {
+  list: (p) => api.get("/users", { params: p }),
+  update: (id, d) => api.patch(`/users/${id}`, d),
+  remove: (id) => api.delete(`/users/${id}`),
+  resendWelcome: (id) => api.post(`/users/${id}/resend-welcome`), // ADD THIS
 };

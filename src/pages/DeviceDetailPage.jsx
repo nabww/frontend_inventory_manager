@@ -487,7 +487,7 @@ const VerifyModal = ({ device, onClose, onSuccess }) => {
         field="devicePresent"
         label="📱 Device is physically present"
       />
-      {device.has_sim && (
+      {!!device.has_sim && (
         <CheckItem field="simPaired" label="📡 SIM is still paired to device" />
       )}
       <CheckItem field="coverOk" label="🛡️ Cover condition is acceptable" />
@@ -537,7 +537,7 @@ const VerifyModal = ({ device, onClose, onSuccess }) => {
 const LossReportCard = ({ device, report, onAction }) => {
   const [action, setAction] = useState("");
   const [notes, setNotes] = useState("");
-  const [escalateTo, setEscalateTo] = useState("");
+  const [escalateToIds, setEscalateToIds] = useState([]);
   const [users, setUsers] = useState([]);
   const [saving, setSaving] = useState(false);
 
@@ -562,18 +562,18 @@ const LossReportCard = ({ device, report, onAction }) => {
     if (!action) return toast.error("Select an action");
     if (action === "reject" && !notes.trim())
       return toast.error("Reason is required when rejecting");
-    if (action === "escalate" && !escalateTo)
-      return toast.error("Select a user to escalate to");
+    if (action === "escalate" && !escalateToIds.length)
+      return toast.error("Select at least one user to escalate to");
     setSaving(true);
     try {
       await onAction({
         action,
         adminNotes: notes,
-        escalateToUserId: escalateTo ? parseInt(escalateTo) : undefined,
+        escalateToUserIds: escalateToIds,
       });
       setAction("");
       setNotes("");
-      setEscalateTo("");
+      setEscalateToIds([]);
     } finally {
       setSaving(false);
     }
@@ -761,17 +761,75 @@ const LossReportCard = ({ device, report, onAction }) => {
 
             {action === "escalate" && (
               <Field label="Escalate To" style={{ marginBottom: 12 }}>
-                <select
-                  className="input"
-                  value={escalateTo}
-                  onChange={(e) => setEscalateTo(e.target.value)}>
-                  <option value="">Select user…</option>
-                  {users.map((u) => (
-                    <option key={u.id} value={u.id}>
-                      {u.full_name} ({u.role_label || u.role})
-                    </option>
-                  ))}
-                </select>
+                {users.length === 0 ? (
+                  <div className="td-dim" style={{ fontSize: ".85rem" }}>
+                    Loading users…
+                  </div>
+                ) : (
+                  <div
+                    style={{
+                      border: "1px solid var(--border)",
+                      borderRadius: 8,
+                      maxHeight: 180,
+                      overflowY: "auto",
+                    }}>
+                    {users.map((u) => (
+                      <label
+                        key={u.id}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 10,
+                          padding: "8px 12px",
+                          cursor: "pointer",
+                          borderBottom: "1px solid var(--border)",
+                          background: escalateToIds.includes(u.id)
+                            ? "var(--accent-bg)"
+                            : "transparent",
+                        }}>
+                        <input
+                          type="checkbox"
+                          checked={escalateToIds.includes(u.id)}
+                          onChange={() =>
+                            setEscalateToIds((p) =>
+                              p.includes(u.id)
+                                ? p.filter((x) => x !== u.id)
+                                : [...p, u.id],
+                            )
+                          }
+                          style={{
+                            accentColor: "var(--primary)",
+                            width: 15,
+                            height: 15,
+                          }}
+                        />
+                        <span
+                          style={{
+                            flex: 1,
+                            fontSize: ".875rem",
+                            fontWeight: 600,
+                          }}>
+                          {u.full_name}
+                        </span>
+                        <span className="td-dim" style={{ fontSize: ".75rem" }}>
+                          {u.role_label || u.role}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+                {escalateToIds.length > 0 && (
+                  <div
+                    style={{
+                      fontSize: ".78rem",
+                      color: "var(--primary)",
+                      marginTop: 5,
+                      fontWeight: 600,
+                    }}>
+                    {escalateToIds.length} user
+                    {escalateToIds.length > 1 ? "s" : ""} selected
+                  </div>
+                )}
               </Field>
             )}
 
@@ -941,7 +999,7 @@ export default function DeviceDetailPage() {
     );
   if (!device) return null;
 
-  const isLocked = device.locked;
+  const isLocked = !!device.locked;
   const canVerify = isOfficer && !isLocked && device.status !== "lost";
   const canEdit = isOfficer && (!isLocked || isAdmin);
 
@@ -963,7 +1021,7 @@ export default function DeviceDetailPage() {
             }}>
             {device.serial_number}
             <StatusBadge status={device.status} />
-            <SimBadge hasSim={device.has_sim} />
+            <SimBadge hasSim={!!device.has_sim} />
             {isLocked && (
               <span
                 style={{

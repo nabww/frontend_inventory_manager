@@ -699,18 +699,15 @@ export function UsersPage() {
   const [delId, setDelId] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [resending, setResending] = useState(null);
+  const [resendUser, setResendUser] = useState(null);
 
-  const handleResend = async (u) => {
-    if (
-      !window.confirm(
-        `Reset password and resend welcome email to ${u.full_name}?`,
-      )
-    )
-      return;
-    setResending(u.id);
+  const handleResend = async () => {
+    if (!resendUser) return;
+    setResending(resendUser.id);
     try {
-      await userApi.resendWelcome(u.id);
-      toast.success(`Welcome email resent to ${u.email}`);
+      await userApi.resendWelcome(resendUser.id);
+      toast.success(`Welcome email resent to ${resendUser.email}`);
+      setResendUser(null);
     } catch (e) {
       toast.error(getMsg(e, "Failed to resend"));
     } finally {
@@ -891,7 +888,7 @@ export function UsersPage() {
                           <button
                             className="btn btn-ghost btn-icon btn-sm"
                             title="Resend welcome email"
-                            onClick={() => handleResend(u)}
+                            onClick={() => setResendUser(u)}
                             disabled={resending === u.id}>
                             {resending === u.id ? (
                               <Spinner size={13} />
@@ -949,6 +946,15 @@ export function UsersPage() {
         danger
         title="Deactivate User"
         message="User will no longer be able to log in. You can reactivate them by editing the account."
+      />
+
+      <Confirm
+        open={!!resendUser}
+        onClose={() => setResendUser(null)}
+        onConfirm={handleResend}
+        loading={resending === resendUser?.id}
+        title="Resend Welcome Email"
+        message={`This will reset ${resendUser?.full_name}'s password and send them a new welcome email.`}
       />
 
       {showForm && (
