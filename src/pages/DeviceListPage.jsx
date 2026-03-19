@@ -271,7 +271,7 @@ export default function DeviceListPage() {
                           gap: 6,
                         }}>
                         <span className="fw6">{d.serial_number}</span>
-                        {d.locked && (
+                        {!!d.locked && (
                           <span
                             title="Locked — loss report pending"
                             style={{
@@ -286,7 +286,7 @@ export default function DeviceListPage() {
                     </td>
                     <td>{d.model || <span className="td-dim">—</span>}</td>
                     <td>
-                      <SimBadge hasSim={d.has_sim} />
+                      <SimBadge hasSim={!!d.has_sim} />
                     </td>
                     <td>
                       <span>{d.facility_name}</span>

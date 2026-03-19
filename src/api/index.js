@@ -92,3 +92,34 @@ export const simApi = {
   link: (id, deviceId) => api.post(`/sims/${id}/link`, { deviceId }),
   unlink: (id) => api.post(`/sims/${id}/unlink`),
 };
+
+export const adminContactApi = {
+  list: (p) => api.get("/admin-contacts", { params: p }),
+  cadres: () => api.get("/admin-contacts/cadres"),
+  create: (d) => api.post("/admin-contacts", d),
+  update: (id, d) => api.patch(`/admin-contacts/${id}`, d),
+  remove: (id) => api.delete(`/admin-contacts/${id}`),
+};
+
+export const returnApi = {
+  create: (d) => api.post("/returns", d),
+  list: (p) => api.get("/returns", { params: p }),
+  get: (id) => api.get(`/returns/${id}`),
+  review: (id, d) => api.post(`/returns/${id}/review`, d),
+  reissue: (id, d) => api.post(`/returns/${id}/reissue`, d),
+};
+
+export const repairApi = {
+  create: (d) => api.post("/repairs", d),
+  list: (p) => api.get("/repairs", { params: p }),
+  get: (id) => api.get(`/repairs/${id}`),
+  markReturned: (id, d) => api.post(`/repairs/${id}/mark-returned`, d),
+  reissue: (id, d) => api.post(`/repairs/${id}/reissue`, d),
+};
+
+export const transferReqApi = {
+  create: (d) => api.post("/transfer-requests", d),
+  list: (p) => api.get("/transfer-requests", { params: p }),
+  get: (id) => api.get(`/transfer-requests/${id}`),
+  review: (id, d) => api.post(`/transfer-requests/${id}/review`, d),
+};

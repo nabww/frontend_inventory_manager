@@ -14,6 +14,10 @@ import {
   UsersPage,
   AuditLogPage,
   SimsPage,
+  ReturnsPage,
+  RepairsPage,
+  TransferRequestsPage,
+  AdminContactsPage,
 } from "./pages/OtherPages";
 import FacilityDetailPage from "./pages/FacilityDetailPage";
 
@@ -68,6 +72,38 @@ export default function App() {
               element={
                 <AdminRoute>
                   <SimsPage />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/returns"
+              element={
+                <AdminRoute>
+                  <ReturnsPage />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/repairs"
+              element={
+                <AdminRoute>
+                  <RepairsPage />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/transfer-requests"
+              element={
+                <AdminRoute>
+                  <TransferRequestsPage />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/admin-contacts"
+              element={
+                <AdminRoute>
+                  <AdminContactsPage />
                 </AdminRoute>
               }
             />

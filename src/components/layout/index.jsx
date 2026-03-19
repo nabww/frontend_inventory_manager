@@ -14,6 +14,10 @@ import {
   RiMenuLine,
   RiCloseLine,
   RiSimCard2Line,
+  RiArrowGoBackLine,
+  RiToolsLine,
+  RiSendPlaneLine,
+  RiContactsLine,
 } from "react-icons/ri";
 import { useAuth } from "../../contexts";
 import { useTheme } from "../../contexts";
@@ -121,7 +125,15 @@ const NAV = [
 ];
 
 const ADMIN_NAV = [
+  { to: "/returns", icon: <RiArrowGoBackLine />, label: "Returns" },
+  { to: "/repairs", icon: <RiToolsLine />, label: "Repairs" },
+  {
+    to: "/transfer-requests",
+    icon: <RiSendPlaneLine />,
+    label: "Transfer Requests",
+  },
   { to: "/sims", icon: <RiSimCard2Line />, label: "SIM Cards" },
+  { to: "/admin-contacts", icon: <RiContactsLine />, label: "Admin Contacts" },
   { to: "/users", icon: <RiTeamLine />, label: "Users" },
   { to: "/audit-log", icon: <RiFileList3Line />, label: "Audit Log" },
 ];

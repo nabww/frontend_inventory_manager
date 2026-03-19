@@ -10,6 +10,10 @@ import {
   authApi,
   deviceApi,
   simApi,
+  adminContactApi,
+  returnApi,
+  repairApi,
+  transferReqApi,
   getMsg,
 } from "../api";
 import { AppShell } from "../components/layout";
@@ -699,18 +703,15 @@ export function UsersPage() {
   const [delId, setDelId] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [resending, setResending] = useState(null);
+  const [resendUser, setResendUser] = useState(null);
 
-  const handleResend = async (u) => {
-    if (
-      !window.confirm(
-        `Reset password and resend welcome email to ${u.full_name}?`,
-      )
-    )
-      return;
-    setResending(u.id);
+  const handleResend = async () => {
+    if (!resendUser) return;
+    setResending(resendUser.id);
     try {
-      await userApi.resendWelcome(u.id);
-      toast.success(`Welcome email resent to ${u.email}`);
+      await userApi.resendWelcome(resendUser.id);
+      toast.success(`Welcome email resent to ${resendUser.email}`);
+      setResendUser(null);
     } catch (e) {
       toast.error(getMsg(e, "Failed to resend"));
     } finally {
@@ -891,7 +892,7 @@ export function UsersPage() {
                           <button
                             className="btn btn-ghost btn-icon btn-sm"
                             title="Resend welcome email"
-                            onClick={() => handleResend(u)}
+                            onClick={() => setResendUser(u)}
                             disabled={resending === u.id}>
                             {resending === u.id ? (
                               <Spinner size={13} />
@@ -949,6 +950,15 @@ export function UsersPage() {
         danger
         title="Deactivate User"
         message="User will no longer be able to log in. You can reactivate them by editing the account."
+      />
+
+      <Confirm
+        open={!!resendUser}
+        onClose={() => setResendUser(null)}
+        onConfirm={handleResend}
+        loading={resending === resendUser?.id}
+        title="Resend Welcome Email"
+        message={`This will reset ${resendUser?.full_name}'s password and send them a new welcome email.`}
       />
 
       {showForm && (
@@ -1917,5 +1927,1334 @@ export function AuditLogPage() {
         )}
       </div>
     </AppShell>
+  );
+}
+
+// ================================================================
+// ReturnsPage (admin)
+// ================================================================
+export function ReturnsPage() {
+  const navigate = useNavigate();
+  const [rows, setRows] = useState([]);
+  const [pag, setPag] = useState({
+    total: 0,
+    page: 1,
+    limit: 20,
+    totalPages: 1,
+  });
+  const [loading, setLoading] = useState(true);
+  const [status, setStatus] = useState("pending");
+  const [review, setReview] = useState(null);
+  const [reissue, setReissue] = useState(null);
+
+  const fetchRows = useCallback(
+    async (page = 1) => {
+      setLoading(true);
+      try {
+        const r = await returnApi.list({ page, limit: 20, status });
+        setRows(r.data.data);
+        setPag(r.data.pagination);
+      } catch (e) {
+        toast.error(getMsg(e, "Failed to load"));
+      } finally {
+        setLoading(false);
+      }
+    },
+    [status],
+  );
+
+  useEffect(() => {
+    fetchRows(1);
+  }, [fetchRows]);
+
+  const statusColors = {
+    pending: "b-partial",
+    approved: "b-active",
+    rejected: "b-lost",
+    reissued: "b-purple",
+  };
+
+  return (
+    <AppShell title="Returns">
+      <div className="page-hd">
+        <div>
+          <h1>Return Requests</h1>
+          <p>{pag.total} total requests</p>
+        </div>
+      </div>
+      <div className="card mb-16">
+        <div
+          className="card-body"
+          style={{
+            padding: "12px 18px",
+            display: "flex",
+            gap: 8,
+            flexWrap: "wrap",
+          }}>
+          {["", "pending", "approved", "rejected", "reissued"].map((s) => (
+            <button
+              key={s}
+              className={`btn btn-sm ${status === s ? "btn-primary" : "btn-outline"}`}
+              onClick={() => setStatus(s)}>
+              {s || "All"}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="card">
+        <div className="tbl-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Device</th>
+                <th>Facility</th>
+                <th>Requested By</th>
+                <th>Reason</th>
+                <th>Status</th>
+                <th>Date</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <SkeletonRows cols={7} rows={8} />
+              ) : rows.length === 0 ? (
+                <tr>
+                  <td colSpan={7}>
+                    <Empty title="No return requests found" />
+                  </td>
+                </tr>
+              ) : (
+                rows.map((r) => (
+                  <tr
+                    key={r.id}
+                    style={{ cursor: "pointer" }}
+                    onClick={() => navigate(`/devices/${r.device_id}`)}>
+                    <td className="fw6">
+                      {r.serial_number}
+                      <br />
+                      <span className="td-dim">{r.model}</span>
+                    </td>
+                    <td className="td-dim">{r.facility_name}</td>
+                    <td className="td-dim">{r.requested_by_name}</td>
+                    <td
+                      className="td-dim"
+                      style={{
+                        maxWidth: 200,
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}>
+                      {r.reason}
+                    </td>
+                    <td>
+                      <span
+                        className={`badge ${statusColors[r.status] || "b-decomm"}`}>
+                        {r.status}
+                      </span>
+                    </td>
+                    <td className="td-dim">
+                      {format(new Date(r.created_at), "dd MMM yyyy")}
+                    </td>
+                    <td>
+                      <div
+                        style={{ display: "flex", gap: 4 }}
+                        onClick={(e) => e.stopPropagation()}>
+                        {r.status === "pending" && (
+                          <button
+                            className="btn btn-sm btn-primary"
+                            onClick={() => setReview(r)}>
+                            Review
+                          </button>
+                        )}
+                        {r.status === "approved" && (
+                          <button
+                            className="btn btn-sm btn-outline"
+                            onClick={() => setReissue(r)}>
+                            Reissue
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+        {pag.totalPages > 1 && (
+          <div
+            style={{
+              padding: "12px 18px",
+              display: "flex",
+              justifyContent: "flex-end",
+              borderTop: "1px solid var(--border)",
+            }}>
+            <Pagination
+              page={pag.page}
+              totalPages={pag.totalPages}
+              onChange={(p) => fetchRows(p)}
+            />
+          </div>
+        )}
+      </div>
+      {review && (
+        <ReviewReturnModal
+          rr={review}
+          onClose={() => setReview(null)}
+          onSuccess={() => {
+            setReview(null);
+            fetchRows(pag.page);
+          }}
+        />
+      )}
+      {reissue && (
+        <ReissueModal
+          type="return"
+          rr={reissue}
+          onClose={() => setReissue(null)}
+          onSuccess={() => {
+            setReissue(null);
+            fetchRows(pag.page);
+          }}
+        />
+      )}
+    </AppShell>
+  );
+}
+
+function ReviewReturnModal({ rr, onClose, onSuccess }) {
+  const [form, setForm] = useState({
+    status: "approved",
+    adminNotes: "",
+    storageLocation: "",
+    receivedDate: new Date().toISOString().slice(0, 10),
+    receivedBy: "",
+  });
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState("");
+  const set = (f) => (e) => setForm((p) => ({ ...p, [f]: e.target.value }));
+  const submit = async () => {
+    if (!form.status) return;
+    if (form.status === "approved" && !form.storageLocation.trim())
+      return setErr("Storage location is required when approving");
+    setSaving(true);
+    try {
+      await returnApi.review(rr.id, form);
+      toast.success(`Return request ${form.status}`);
+      onSuccess();
+    } catch (e) {
+      setErr(getMsg(e, "Failed"));
+    } finally {
+      setSaving(false);
+    }
+  };
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      title={`Review Return — ${rr.serial_number}`}
+      footer={
+        <>
+          <button
+            className="btn btn-outline"
+            onClick={onClose}
+            disabled={saving}>
+            Cancel
+          </button>
+          <button
+            className={`btn ${form.status === "approved" ? "btn-primary" : "btn-danger"}`}
+            onClick={submit}
+            disabled={saving}>
+            {saving ? (
+              <>
+                <Spinner size={13} /> Saving…
+              </>
+            ) : form.status === "approved" ? (
+              "Approve"
+            ) : (
+              "Reject"
+            )}
+          </button>
+        </>
+      }>
+      <ErrAlert message={err} />
+      <div
+        style={{
+          background: "var(--accent-bg)",
+          borderRadius: 8,
+          padding: "12px 16px",
+          marginBottom: 16,
+          fontSize: ".85rem",
+        }}>
+        <strong>Reason:</strong> {rr.reason}
+      </div>
+      <Field label="Decision">
+        <select className="input" value={form.status} onChange={set("status")}>
+          <option value="approved">Approve</option>
+          <option value="rejected">Reject</option>
+        </select>
+      </Field>
+      {form.status === "approved" && (
+        <>
+          <Field label="Storage Location" required>
+            <input
+              className="input"
+              value={form.storageLocation}
+              onChange={set("storageLocation")}
+              placeholder="e.g. Store Room B, Shelf 3"
+            />
+          </Field>
+          <Field label="Date Received">
+            <input
+              className="input"
+              type="date"
+              value={form.receivedDate}
+              onChange={set("receivedDate")}
+            />
+          </Field>
+          <Field label="Received By">
+            <input
+              className="input"
+              value={form.receivedBy}
+              onChange={set("receivedBy")}
+              placeholder="Name of person who received it"
+            />
+          </Field>
+        </>
+      )}
+      <Field label="Admin Notes">
+        <textarea
+          className="input"
+          rows={2}
+          value={form.adminNotes}
+          onChange={set("adminNotes")}
+          placeholder="Optional notes to the requester"
+        />
+      </Field>
+    </Modal>
+  );
+}
+
+function ReissueModal({ type, rr, onClose, onSuccess }) {
+  const [facilities, setFacilities] = useState([]);
+  const [form, setForm] = useState({
+    reissuedDate: new Date().toISOString().slice(0, 10),
+    reissuedToFacility: "",
+  });
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState("");
+  const set = (f) => (e) => setForm((p) => ({ ...p, [f]: e.target.value }));
+  useEffect(() => {
+    refApi
+      .facilities({ limit: 200 })
+      .then((r) => setFacilities(r.data.data || []))
+      .catch(() => {});
+  }, []);
+  const submit = async () => {
+    if (!form.reissuedToFacility)
+      return setErr("Select a destination facility");
+    setSaving(true);
+    try {
+      if (type === "return")
+        await returnApi.reissue(rr.id, {
+          ...form,
+          reissuedToFacility: parseInt(form.reissuedToFacility),
+        });
+      else
+        await repairApi.reissue(rr.id, {
+          ...form,
+          reissuedToFacility: parseInt(form.reissuedToFacility),
+        });
+      toast.success("Device reissued to facility");
+      onSuccess();
+    } catch (e) {
+      setErr(getMsg(e, "Failed"));
+    } finally {
+      setSaving(false);
+    }
+  };
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      title={`Reissue to Facility — ${rr.serial_number}`}
+      footer={
+        <>
+          <button
+            className="btn btn-outline"
+            onClick={onClose}
+            disabled={saving}>
+            Cancel
+          </button>
+          <button
+            className="btn btn-primary"
+            onClick={submit}
+            disabled={saving}>
+            {saving ? (
+              <>
+                <Spinner size={13} /> Reissuing…
+              </>
+            ) : (
+              "Reissue Device"
+            )}
+          </button>
+        </>
+      }>
+      <ErrAlert message={err} />
+      <Field label="Destination Facility" required>
+        <select
+          className="input"
+          value={form.reissuedToFacility}
+          onChange={set("reissuedToFacility")}>
+          <option value="">Select facility…</option>
+          {facilities.map((f) => (
+            <option key={f.id} value={f.id}>
+              {f.name} ({f.mfl_code})
+            </option>
+          ))}
+        </select>
+      </Field>
+      <Field label="Date Reissued">
+        <input
+          className="input"
+          type="date"
+          value={form.reissuedDate}
+          onChange={set("reissuedDate")}
+        />
+      </Field>
+    </Modal>
+  );
+}
+
+// ================================================================
+// RepairsPage (admin)
+// ================================================================
+export function RepairsPage() {
+  const navigate = useNavigate();
+  const [rows, setRows] = useState([]);
+  const [pag, setPag] = useState({
+    total: 0,
+    page: 1,
+    limit: 20,
+    totalPages: 1,
+  });
+  const [loading, setLoading] = useState(true);
+  const [status, setStatus] = useState("under_repair");
+  const [markReturned, setMarkReturned] = useState(null);
+  const [reissue, setReissue] = useState(null);
+
+  const fetchRows = useCallback(
+    async (page = 1) => {
+      setLoading(true);
+      try {
+        const r = await repairApi.list({ page, limit: 20, status });
+        setRows(r.data.data);
+        setPag(r.data.pagination);
+      } catch (e) {
+        toast.error(getMsg(e, "Failed to load"));
+      } finally {
+        setLoading(false);
+      }
+    },
+    [status],
+  );
+
+  useEffect(() => {
+    fetchRows(1);
+  }, [fetchRows]);
+
+  const statusColors = {
+    under_repair: "b-amber",
+    repair_return_pending: "b-partial",
+    reissued: "b-purple",
+    pending: "b-decomm",
+  };
+
+  return (
+    <AppShell title="Repairs">
+      <div className="page-hd">
+        <div>
+          <h1>Repair Requests</h1>
+          <p>{pag.total} total requests</p>
+        </div>
+      </div>
+      <div className="card mb-16">
+        <div
+          className="card-body"
+          style={{
+            padding: "12px 18px",
+            display: "flex",
+            gap: 8,
+            flexWrap: "wrap",
+          }}>
+          {["", "under_repair", "repair_return_pending", "reissued"].map(
+            (s) => (
+              <button
+                key={s}
+                className={`btn btn-sm ${status === s ? "btn-primary" : "btn-outline"}`}
+                onClick={() => setStatus(s)}>
+                {s.replace(/_/g, " ") || "All"}
+              </button>
+            ),
+          )}
+        </div>
+      </div>
+      <div className="card">
+        <div className="tbl-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Device</th>
+                <th>Facility</th>
+                <th>Failure Cause</th>
+                <th>Sent To</th>
+                <th>Sent Date</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <SkeletonRows cols={7} rows={8} />
+              ) : rows.length === 0 ? (
+                <tr>
+                  <td colSpan={7}>
+                    <Empty title="No repair requests found" />
+                  </td>
+                </tr>
+              ) : (
+                rows.map((r) => (
+                  <tr
+                    key={r.id}
+                    style={{ cursor: "pointer" }}
+                    onClick={() => navigate(`/devices/${r.device_id}`)}>
+                    <td className="fw6">
+                      {r.serial_number}
+                      <br />
+                      <span className="td-dim">{r.model}</span>
+                    </td>
+                    <td className="td-dim">{r.facility_name}</td>
+                    <td
+                      className="td-dim"
+                      style={{
+                        maxWidth: 180,
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}>
+                      {r.failure_cause}
+                    </td>
+                    <td className="td-dim">{r.sent_to || "—"}</td>
+                    <td className="td-dim">
+                      {r.sent_date
+                        ? format(new Date(r.sent_date), "dd MMM yyyy")
+                        : "—"}
+                    </td>
+                    <td>
+                      <span
+                        className={`badge ${statusColors[r.status] || "b-decomm"}`}>
+                        {r.status.replace(/_/g, " ")}
+                      </span>
+                    </td>
+                    <td>
+                      <div
+                        style={{ display: "flex", gap: 4 }}
+                        onClick={(e) => e.stopPropagation()}>
+                        {r.status === "under_repair" && (
+                          <button
+                            className="btn btn-sm btn-primary"
+                            onClick={() => setMarkReturned(r)}>
+                            Mark Returned
+                          </button>
+                        )}
+                        {r.status === "repair_return_pending" && (
+                          <button
+                            className="btn btn-sm btn-outline"
+                            onClick={() => setReissue(r)}>
+                            Reissue
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+        {pag.totalPages > 1 && (
+          <div
+            style={{
+              padding: "12px 18px",
+              display: "flex",
+              justifyContent: "flex-end",
+              borderTop: "1px solid var(--border)",
+            }}>
+            <Pagination
+              page={pag.page}
+              totalPages={pag.totalPages}
+              onChange={(p) => fetchRows(p)}
+            />
+          </div>
+        )}
+      </div>
+      {markReturned && (
+        <MarkRepairReturnedModal
+          rp={markReturned}
+          onClose={() => setMarkReturned(null)}
+          onSuccess={() => {
+            setMarkReturned(null);
+            fetchRows(pag.page);
+          }}
+        />
+      )}
+      {reissue && (
+        <ReissueModal
+          type="repair"
+          rr={reissue}
+          onClose={() => setReissue(null)}
+          onSuccess={() => {
+            setReissue(null);
+            fetchRows(pag.page);
+          }}
+        />
+      )}
+    </AppShell>
+  );
+}
+
+function MarkRepairReturnedModal({ rp, onClose, onSuccess }) {
+  const [form, setForm] = useState({
+    returnedDate: new Date().toISOString().slice(0, 10),
+    returnCondition: "",
+    adminNotes: "",
+  });
+  const [contacts, setContacts] = useState([]);
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState("");
+  const set = (f) => (e) => setForm((p) => ({ ...p, [f]: e.target.value }));
+  const submit = async () => {
+    setSaving(true);
+    try {
+      await repairApi.markReturned(rp.id, {
+        ...form,
+        adminContactIds: contacts,
+      });
+      toast.success("Device marked as returned from repair");
+      onSuccess();
+    } catch (e) {
+      setErr(getMsg(e, "Failed"));
+    } finally {
+      setSaving(false);
+    }
+  };
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      title={`Mark Returned from Repair — ${rp.serial_number}`}
+      footer={
+        <>
+          <button
+            className="btn btn-outline"
+            onClick={onClose}
+            disabled={saving}>
+            Cancel
+          </button>
+          <button
+            className="btn btn-primary"
+            onClick={submit}
+            disabled={saving}>
+            {saving ? (
+              <>
+                <Spinner size={13} /> Saving…
+              </>
+            ) : (
+              "Confirm Return"
+            )}
+          </button>
+        </>
+      }>
+      <ErrAlert message={err} />
+      <Field label="Date Returned from Repair">
+        <input
+          className="input"
+          type="date"
+          value={form.returnedDate}
+          onChange={set("returnedDate")}
+        />
+      </Field>
+      <Field label="Return Condition">
+        <input
+          className="input"
+          value={form.returnCondition}
+          onChange={set("returnCondition")}
+          placeholder="e.g. Repaired and functional, Screen replaced"
+        />
+      </Field>
+      <Field label="Notes">
+        <textarea
+          className="input"
+          rows={2}
+          value={form.adminNotes}
+          onChange={set("adminNotes")}
+          placeholder="Any additional notes"
+        />
+      </Field>
+      <AdminContactPickerInline selected={contacts} onChange={setContacts} />
+    </Modal>
+  );
+}
+
+// Inline version of AdminContactPicker for use within OtherPages
+function AdminContactPickerInline({
+  selected,
+  onChange,
+  label = "Notify Admin Contacts (optional)",
+}) {
+  const [contacts, setContacts] = useState([]);
+  useEffect(() => {
+    adminContactApi
+      .list()
+      .then((r) => setContacts(r.data.data || []))
+      .catch(() => {});
+  }, []);
+  const toggle = (id) =>
+    onChange(
+      selected.includes(id)
+        ? selected.filter((x) => x !== id)
+        : [...selected, id],
+    );
+  if (!contacts.length) return null;
+  return (
+    <Field label={label}>
+      <div
+        style={{
+          border: "1px solid var(--border)",
+          borderRadius: 8,
+          maxHeight: 160,
+          overflowY: "auto",
+        }}>
+        {contacts.map((c) => (
+          <label
+            key={c.id}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              padding: "8px 12px",
+              cursor: "pointer",
+              borderBottom: "1px solid var(--border)",
+              background: selected.includes(c.id)
+                ? "var(--accent-bg)"
+                : "transparent",
+            }}>
+            <input
+              type="checkbox"
+              checked={selected.includes(c.id)}
+              onChange={() => toggle(c.id)}
+              style={{ accentColor: "var(--primary)", width: 15, height: 15 }}
+            />
+            <span style={{ flex: 1, fontSize: ".875rem", fontWeight: 600 }}>
+              {c.name}
+            </span>
+            <span className="td-dim" style={{ fontSize: ".75rem" }}>
+              {c.cadre}
+            </span>
+          </label>
+        ))}
+      </div>
+      {selected.length > 0 && (
+        <div
+          style={{
+            fontSize: ".78rem",
+            color: "var(--primary)",
+            marginTop: 5,
+            fontWeight: 600,
+          }}>
+          {selected.length} selected
+        </div>
+      )}
+    </Field>
+  );
+}
+
+// ================================================================
+// TransferRequestsPage (admin)
+// ================================================================
+export function TransferRequestsPage() {
+  const navigate = useNavigate();
+  const [rows, setRows] = useState([]);
+  const [pag, setPag] = useState({
+    total: 0,
+    page: 1,
+    limit: 20,
+    totalPages: 1,
+  });
+  const [loading, setLoading] = useState(true);
+  const [status, setStatus] = useState("pending");
+  const [review, setReview] = useState(null);
+
+  const fetchRows = useCallback(
+    async (page = 1) => {
+      setLoading(true);
+      try {
+        const r = await transferReqApi.list({ page, limit: 20, status });
+        setRows(r.data.data);
+        setPag(r.data.pagination);
+      } catch (e) {
+        toast.error(getMsg(e, "Failed to load"));
+      } finally {
+        setLoading(false);
+      }
+    },
+    [status],
+  );
+
+  useEffect(() => {
+    fetchRows(1);
+  }, [fetchRows]);
+
+  const statusColors = {
+    pending: "b-partial",
+    approved: "b-active",
+    rejected: "b-lost",
+  };
+
+  return (
+    <AppShell title="Transfer Requests">
+      <div className="page-hd">
+        <div>
+          <h1>Transfer Requests</h1>
+          <p>{pag.total} total requests</p>
+        </div>
+      </div>
+      <div className="card mb-16">
+        <div
+          className="card-body"
+          style={{
+            padding: "12px 18px",
+            display: "flex",
+            gap: 8,
+            flexWrap: "wrap",
+          }}>
+          {["", "pending", "approved", "rejected"].map((s) => (
+            <button
+              key={s}
+              className={`btn btn-sm ${status === s ? "btn-primary" : "btn-outline"}`}
+              onClick={() => setStatus(s)}>
+              {s || "All"}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="card">
+        <div className="tbl-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Device</th>
+                <th>From</th>
+                <th>To</th>
+                <th>Requested By</th>
+                <th>Reason</th>
+                <th>Status</th>
+                <th>Date</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <SkeletonRows cols={8} rows={8} />
+              ) : rows.length === 0 ? (
+                <tr>
+                  <td colSpan={8}>
+                    <Empty title="No transfer requests found" />
+                  </td>
+                </tr>
+              ) : (
+                rows.map((r) => (
+                  <tr
+                    key={r.id}
+                    style={{ cursor: "pointer" }}
+                    onClick={() => navigate(`/devices/${r.device_id}`)}>
+                    <td className="fw6">
+                      {r.serial_number}
+                      <br />
+                      <span className="td-dim">{r.model}</span>
+                    </td>
+                    <td className="td-dim">{r.current_facility_name}</td>
+                    <td className="td-dim">{r.destination_facility_name}</td>
+                    <td className="td-dim">{r.requested_by_name}</td>
+                    <td
+                      className="td-dim"
+                      style={{
+                        maxWidth: 150,
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}>
+                      {r.reason || "—"}
+                    </td>
+                    <td>
+                      <span
+                        className={`badge ${statusColors[r.status] || "b-decomm"}`}>
+                        {r.status}
+                      </span>
+                    </td>
+                    <td className="td-dim">
+                      {format(new Date(r.created_at), "dd MMM yyyy")}
+                    </td>
+                    <td>
+                      <div
+                        style={{ display: "flex", gap: 4 }}
+                        onClick={(e) => e.stopPropagation()}>
+                        {r.status === "pending" && (
+                          <button
+                            className="btn btn-sm btn-primary"
+                            onClick={() => setReview(r)}>
+                            Review
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+        {pag.totalPages > 1 && (
+          <div
+            style={{
+              padding: "12px 18px",
+              display: "flex",
+              justifyContent: "flex-end",
+              borderTop: "1px solid var(--border)",
+            }}>
+            <Pagination
+              page={pag.page}
+              totalPages={pag.totalPages}
+              onChange={(p) => fetchRows(p)}
+            />
+          </div>
+        )}
+      </div>
+      {review && (
+        <ReviewTransferModal
+          tr={review}
+          onClose={() => setReview(null)}
+          onSuccess={() => {
+            setReview(null);
+            fetchRows(pag.page);
+          }}
+        />
+      )}
+    </AppShell>
+  );
+}
+
+function ReviewTransferModal({ tr, onClose, onSuccess }) {
+  const [form, setForm] = useState({ status: "approved", adminNotes: "" });
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState("");
+  const set = (f) => (e) => setForm((p) => ({ ...p, [f]: e.target.value }));
+  const submit = async () => {
+    setSaving(true);
+    try {
+      await transferReqApi.review(tr.id, form);
+      toast.success(`Transfer request ${form.status}`);
+      onSuccess();
+    } catch (e) {
+      setErr(getMsg(e, "Failed"));
+    } finally {
+      setSaving(false);
+    }
+  };
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      title={`Review Transfer — ${tr.serial_number}`}
+      footer={
+        <>
+          <button
+            className="btn btn-outline"
+            onClick={onClose}
+            disabled={saving}>
+            Cancel
+          </button>
+          <button
+            className={`btn ${form.status === "approved" ? "btn-primary" : "btn-danger"}`}
+            onClick={submit}
+            disabled={saving}>
+            {saving ? (
+              <>
+                <Spinner size={13} /> Saving…
+              </>
+            ) : form.status === "approved" ? (
+              "Approve"
+            ) : (
+              "Reject"
+            )}
+          </button>
+        </>
+      }>
+      <ErrAlert message={err} />
+      <div
+        style={{
+          background: "var(--accent-bg)",
+          borderRadius: 8,
+          padding: "12px 16px",
+          marginBottom: 16,
+          fontSize: ".85rem",
+        }}>
+        <strong>From:</strong> {tr.current_facility_name} → <strong>To:</strong>{" "}
+        {tr.destination_facility_name}
+        {tr.reason && (
+          <>
+            <br />
+            <strong>Reason:</strong> {tr.reason}
+          </>
+        )}
+      </div>
+      <Field label="Decision">
+        <select className="input" value={form.status} onChange={set("status")}>
+          <option value="approved">Approve</option>
+          <option value="rejected">Reject</option>
+        </select>
+      </Field>
+      <Field label="Admin Notes">
+        <textarea
+          className="input"
+          rows={2}
+          value={form.adminNotes}
+          onChange={set("adminNotes")}
+          placeholder="Optional notes to the requester"
+        />
+      </Field>
+    </Modal>
+  );
+}
+
+// ================================================================
+// AdminContactsPage
+// ================================================================
+export function AdminContactsPage() {
+  const [contacts, setContacts] = useState([]);
+  const [cadres, setCadres] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [showForm, setShowForm] = useState(false);
+  const [editItem, setEditItem] = useState(null);
+  const [delId, setDelId] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const fetchAll = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [c, k] = await Promise.all([
+        adminContactApi.list({ search, includeInactive: true }),
+        adminContactApi.cadres(),
+      ]);
+      setContacts(c.data.data || []);
+      setCadres(k.data.data || []);
+    } catch (e) {
+      toast.error(getMsg(e, "Failed to load"));
+    } finally {
+      setLoading(false);
+    }
+  }, [search]);
+
+  useEffect(() => {
+    const t = setTimeout(() => fetchAll(), 320);
+    return () => clearTimeout(t);
+  }, [fetchAll]);
+
+  const handleDel = async () => {
+    setDeleting(true);
+    try {
+      await adminContactApi.remove(delId);
+      toast.success("Contact deleted");
+      setDelId(null);
+      fetchAll();
+    } catch (e) {
+      toast.error(getMsg(e, "Failed"));
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  return (
+    <AppShell title="Admin Contacts">
+      <div className="page-hd">
+        <div>
+          <h1>Admin Contacts</h1>
+          <p>Contacts who receive workflow notifications</p>
+        </div>
+        <button
+          className="btn btn-primary"
+          onClick={() => {
+            setEditItem(null);
+            setShowForm(true);
+          }}>
+          <RiAddLine size={15} /> Add Contact
+        </button>
+      </div>
+      <div className="card mb-16">
+        <div className="card-body" style={{ padding: "12px 18px" }}>
+          <div className="search-wrap">
+            <RiSearchLine className="search-ic" />
+            <input
+              className="input"
+              placeholder="Search by name, email or cadre…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+        </div>
+      </div>
+      <div className="card">
+        <div className="tbl-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Cadre</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <SkeletonRows cols={5} rows={6} />
+              ) : contacts.length === 0 ? (
+                <tr>
+                  <td colSpan={5}>
+                    <Empty title="No admin contacts found" />
+                  </td>
+                </tr>
+              ) : (
+                contacts.map((c) => (
+                  <tr key={c.id}>
+                    <td className="fw6">{c.name}</td>
+                    <td className="td-dim">{c.email}</td>
+                    <td className="td-dim">{c.cadre || "—"}</td>
+                    <td>
+                      <span
+                        className={`badge ${c.is_active ? "b-active" : "b-decomm"}`}>
+                        {c.is_active ? "Active" : "Inactive"}
+                      </span>
+                    </td>
+                    <td>
+                      <div style={{ display: "flex", gap: 4 }}>
+                        <button
+                          className="btn btn-ghost btn-icon btn-sm"
+                          onClick={() => {
+                            setEditItem(c);
+                            setShowForm(true);
+                          }}>
+                          <RiEditLine size={14} />
+                        </button>
+                        <button
+                          className="btn btn-ghost btn-icon btn-sm"
+                          style={{ color: "var(--danger)" }}
+                          onClick={() => setDelId(c.id)}>
+                          <RiDeleteBinLine size={14} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <Confirm
+        open={!!delId}
+        onClose={() => setDelId(null)}
+        onConfirm={handleDel}
+        loading={deleting}
+        danger
+        title="Delete Contact"
+        message="This contact will no longer receive notifications."
+      />
+      {showForm && (
+        <AdminContactFormModal
+          contact={editItem}
+          cadres={cadres}
+          onClose={() => {
+            setShowForm(false);
+            setEditItem(null);
+          }}
+          onSuccess={() => {
+            setShowForm(false);
+            setEditItem(null);
+            fetchAll();
+          }}
+        />
+      )}
+    </AppShell>
+  );
+}
+
+function AdminContactFormModal({ contact, cadres, onClose, onSuccess }) {
+  const isEdit = !!contact;
+  const [form, setForm] = useState(
+    isEdit
+      ? {
+          name: contact.name,
+          email: contact.email,
+          cadre: contact.cadre || "",
+          isActive: contact.is_active,
+        }
+      : { name: "", email: "", cadre: "", isActive: true },
+  );
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState("");
+  const [showCadreList, setShowCadreList] = useState(false);
+  const set = (f) => (e) => setForm((p) => ({ ...p, [f]: e.target.value }));
+
+  const submit = async () => {
+    if (!form.name.trim() || !form.email.trim())
+      return setErr("Name and email are required");
+    setSaving(true);
+    try {
+      if (isEdit) {
+        await adminContactApi.update(contact.id, form);
+        toast.success("Contact updated");
+      } else {
+        await adminContactApi.create(form);
+        toast.success("Contact added");
+      }
+      onSuccess();
+    } catch (e) {
+      setErr(getMsg(e, "Failed"));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const filteredCadres = cadres.filter(
+    (c) =>
+      c.toLowerCase().includes(form.cadre.toLowerCase()) && c !== form.cadre,
+  );
+
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      title={isEdit ? `Edit — ${contact.name}` : "Add Admin Contact"}
+      footer={
+        <>
+          <button
+            className="btn btn-outline"
+            onClick={onClose}
+            disabled={saving}>
+            Cancel
+          </button>
+          <button
+            className="btn btn-primary"
+            onClick={submit}
+            disabled={saving}>
+            {saving ? (
+              <>
+                <Spinner size={13} /> Saving…
+              </>
+            ) : isEdit ? (
+              "Update"
+            ) : (
+              "Add Contact"
+            )}
+          </button>
+        </>
+      }>
+      <ErrAlert message={err} />
+      <Field label="Full Name" required>
+        <input
+          className="input"
+          value={form.name}
+          onChange={set("name")}
+          placeholder="e.g. Jane Doe"
+        />
+      </Field>
+      <Field label="Email" required>
+        <input
+          className="input"
+          type="email"
+          value={form.email}
+          onChange={set("email")}
+          placeholder="jane@org.org"
+        />
+      </Field>
+      <Field label="Cadre">
+        <div style={{ position: "relative" }}>
+          <input
+            className="input"
+            value={form.cadre}
+            onChange={(e) => {
+              set("cadre")(e);
+              setShowCadreList(true);
+            }}
+            onBlur={() => setTimeout(() => setShowCadreList(false), 150)}
+            placeholder="e.g. Programme Officer, County Director"
+          />
+          {showCadreList && filteredCadres.length > 0 && (
+            <div
+              style={{
+                position: "absolute",
+                top: "100%",
+                left: 0,
+                right: 0,
+                background: "var(--bg-card)",
+                border: "1px solid var(--border)",
+                borderRadius: 8,
+                zIndex: 50,
+                maxHeight: 160,
+                overflowY: "auto",
+                boxShadow: "var(--shadow-md)",
+              }}>
+              {filteredCadres.map((c) => (
+                <div
+                  key={c}
+                  onMouseDown={() => {
+                    setForm((p) => ({ ...p, cadre: c }));
+                    setShowCadreList(false);
+                  }}
+                  style={{
+                    padding: "9px 14px",
+                    cursor: "pointer",
+                    fontSize: ".875rem",
+                  }}
+                  onMouseOver={(e) =>
+                    (e.currentTarget.style.background = "var(--accent-bg)")
+                  }
+                  onMouseOut={(e) =>
+                    (e.currentTarget.style.background = "transparent")
+                  }>
+                  {c}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </Field>
+      {isEdit && (
+        <Field label="Status">
+          <select
+            className="input"
+            value={form.isActive ? "1" : "0"}
+            onChange={(e) =>
+              setForm((p) => ({ ...p, isActive: e.target.value === "1" }))
+            }>
+            <option value="1">Active</option>
+            <option value="0">Inactive</option>
+          </select>
+        </Field>
+      )}
+    </Modal>
   );
 }

@@ -1,6 +1,14 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { deviceApi, refApi, getMsg } from "../api";
+import {
+  deviceApi,
+  refApi,
+  returnApi,
+  repairApi,
+  transferReqApi,
+  adminContactApi,
+  getMsg,
+} from "../api";
 import { AppShell } from "../components/layout";
 import {
   PageLoader,
@@ -18,6 +26,9 @@ import {
   RiShieldCheckLine,
   RiExchangeLine,
   RiLockLine,
+  RiArrowGoBackLine,
+  RiToolsLine,
+  RiSendPlaneLine,
 } from "react-icons/ri";
 import { useAuth } from "../contexts";
 import { format } from "date-fns";
@@ -487,7 +498,7 @@ const VerifyModal = ({ device, onClose, onSuccess }) => {
         field="devicePresent"
         label="📱 Device is physically present"
       />
-      {device.has_sim && (
+      {!!device.has_sim && (
         <CheckItem field="simPaired" label="📡 SIM is still paired to device" />
       )}
       <CheckItem field="coverOk" label="🛡️ Cover condition is acceptable" />
@@ -537,7 +548,7 @@ const VerifyModal = ({ device, onClose, onSuccess }) => {
 const LossReportCard = ({ device, report, onAction }) => {
   const [action, setAction] = useState("");
   const [notes, setNotes] = useState("");
-  const [escalateTo, setEscalateTo] = useState("");
+  const [escalateToIds, setEscalateToIds] = useState([]);
   const [users, setUsers] = useState([]);
   const [saving, setSaving] = useState(false);
 
@@ -562,18 +573,18 @@ const LossReportCard = ({ device, report, onAction }) => {
     if (!action) return toast.error("Select an action");
     if (action === "reject" && !notes.trim())
       return toast.error("Reason is required when rejecting");
-    if (action === "escalate" && !escalateTo)
-      return toast.error("Select a user to escalate to");
+    if (action === "escalate" && !escalateToIds.length)
+      return toast.error("Select at least one user to escalate to");
     setSaving(true);
     try {
       await onAction({
         action,
         adminNotes: notes,
-        escalateToUserId: escalateTo ? parseInt(escalateTo) : undefined,
+        escalateToUserIds: escalateToIds,
       });
       setAction("");
       setNotes("");
-      setEscalateTo("");
+      setEscalateToIds([]);
     } finally {
       setSaving(false);
     }
@@ -761,17 +772,75 @@ const LossReportCard = ({ device, report, onAction }) => {
 
             {action === "escalate" && (
               <Field label="Escalate To" style={{ marginBottom: 12 }}>
-                <select
-                  className="input"
-                  value={escalateTo}
-                  onChange={(e) => setEscalateTo(e.target.value)}>
-                  <option value="">Select user…</option>
-                  {users.map((u) => (
-                    <option key={u.id} value={u.id}>
-                      {u.full_name} ({u.role_label || u.role})
-                    </option>
-                  ))}
-                </select>
+                {users.length === 0 ? (
+                  <div className="td-dim" style={{ fontSize: ".85rem" }}>
+                    Loading users…
+                  </div>
+                ) : (
+                  <div
+                    style={{
+                      border: "1px solid var(--border)",
+                      borderRadius: 8,
+                      maxHeight: 180,
+                      overflowY: "auto",
+                    }}>
+                    {users.map((u) => (
+                      <label
+                        key={u.id}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 10,
+                          padding: "8px 12px",
+                          cursor: "pointer",
+                          borderBottom: "1px solid var(--border)",
+                          background: escalateToIds.includes(u.id)
+                            ? "var(--accent-bg)"
+                            : "transparent",
+                        }}>
+                        <input
+                          type="checkbox"
+                          checked={escalateToIds.includes(u.id)}
+                          onChange={() =>
+                            setEscalateToIds((p) =>
+                              p.includes(u.id)
+                                ? p.filter((x) => x !== u.id)
+                                : [...p, u.id],
+                            )
+                          }
+                          style={{
+                            accentColor: "var(--primary)",
+                            width: 15,
+                            height: 15,
+                          }}
+                        />
+                        <span
+                          style={{
+                            flex: 1,
+                            fontSize: ".875rem",
+                            fontWeight: 600,
+                          }}>
+                          {u.full_name}
+                        </span>
+                        <span className="td-dim" style={{ fontSize: ".75rem" }}>
+                          {u.role_label || u.role}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+                {escalateToIds.length > 0 && (
+                  <div
+                    style={{
+                      fontSize: ".78rem",
+                      color: "var(--primary)",
+                      marginTop: 5,
+                      fontWeight: 600,
+                    }}>
+                    {escalateToIds.length} user
+                    {escalateToIds.length > 1 ? "s" : ""} selected
+                  </div>
+                )}
               </Field>
             )}
 
@@ -890,6 +959,334 @@ const RecoverSection = ({ deviceId, onAction }) => {
   );
 };
 
+// ── AdminContact picker (shared) ─────────────────────────────────
+const AdminContactPicker = ({
+  selected,
+  onChange,
+  label = "Notify Admin Contacts (optional)",
+}) => {
+  const [contacts, setContacts] = useState([]);
+  useEffect(() => {
+    adminContactApi
+      .list()
+      .then((r) => setContacts(r.data.data || []))
+      .catch(() => {});
+  }, []);
+  const toggle = (id) =>
+    onChange(
+      selected.includes(id)
+        ? selected.filter((x) => x !== id)
+        : [...selected, id],
+    );
+  if (!contacts.length) return null;
+  return (
+    <Field label={label}>
+      <div
+        style={{
+          border: "1px solid var(--border)",
+          borderRadius: 8,
+          maxHeight: 160,
+          overflowY: "auto",
+        }}>
+        {contacts.map((c) => (
+          <label
+            key={c.id}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              padding: "8px 12px",
+              cursor: "pointer",
+              borderBottom: "1px solid var(--border)",
+              background: selected.includes(c.id)
+                ? "var(--accent-bg)"
+                : "transparent",
+            }}>
+            <input
+              type="checkbox"
+              checked={selected.includes(c.id)}
+              onChange={() => toggle(c.id)}
+              style={{ accentColor: "var(--primary)", width: 15, height: 15 }}
+            />
+            <span style={{ flex: 1, fontSize: ".875rem", fontWeight: 600 }}>
+              {c.name}
+            </span>
+            <span className="td-dim" style={{ fontSize: ".75rem" }}>
+              {c.cadre}
+            </span>
+          </label>
+        ))}
+      </div>
+      {selected.length > 0 && (
+        <div
+          style={{
+            fontSize: ".78rem",
+            color: "var(--primary)",
+            marginTop: 5,
+            fontWeight: 600,
+          }}>
+          {selected.length} selected
+        </div>
+      )}
+    </Field>
+  );
+};
+
+// ── Return Request Modal ──────────────────────────────────────────
+const ReturnRequestModal = ({ device, onClose, onSuccess }) => {
+  const [reason, setReason] = useState("");
+  const [contacts, setContacts] = useState([]);
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState("");
+  const submit = async () => {
+    if (!reason.trim()) return setErr("Reason is required");
+    setSaving(true);
+    try {
+      await returnApi.create({
+        deviceId: device.id,
+        reason,
+        adminContactIds: contacts,
+      });
+      toast.success("Return request submitted");
+      onSuccess();
+    } catch (e) {
+      setErr(getMsg(e, "Failed to submit"));
+    } finally {
+      setSaving(false);
+    }
+  };
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      title={`Return Device — ${device.serial_number}`}
+      footer={
+        <>
+          <button
+            className="btn btn-outline"
+            onClick={onClose}
+            disabled={saving}>
+            Cancel
+          </button>
+          <button
+            className="btn btn-primary"
+            onClick={submit}
+            disabled={saving}>
+            {saving ? (
+              <>
+                <Spinner size={13} /> Submitting…
+              </>
+            ) : (
+              "Submit Return Request"
+            )}
+          </button>
+        </>
+      }>
+      <ErrAlert message={err} />
+      <Field label="Reason for Return" required>
+        <textarea
+          className="input"
+          rows={3}
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          placeholder="Why is this device being returned?"
+        />
+      </Field>
+      <AdminContactPicker selected={contacts} onChange={setContacts} />
+    </Modal>
+  );
+};
+
+// ── Repair Request Modal ──────────────────────────────────────────
+const RepairRequestModal = ({ device, onClose, onSuccess }) => {
+  const [form, setForm] = useState({
+    failureCause: "",
+    sentTo: "",
+    sentDate: new Date().toISOString().slice(0, 10),
+    signedOffBy: "",
+  });
+  const [contacts, setContacts] = useState([]);
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState("");
+  const set = (f) => (e) => setForm((p) => ({ ...p, [f]: e.target.value }));
+  const submit = async () => {
+    if (!form.failureCause.trim()) return setErr("Failure cause is required");
+    setSaving(true);
+    try {
+      await repairApi.create({
+        deviceId: device.id,
+        ...form,
+        adminContactIds: contacts,
+      });
+      toast.success("Repair request submitted");
+      onSuccess();
+    } catch (e) {
+      setErr(getMsg(e, "Failed to submit"));
+    } finally {
+      setSaving(false);
+    }
+  };
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      title={`Send for Repair — ${device.serial_number}`}
+      footer={
+        <>
+          <button
+            className="btn btn-outline"
+            onClick={onClose}
+            disabled={saving}>
+            Cancel
+          </button>
+          <button
+            className="btn btn-primary"
+            onClick={submit}
+            disabled={saving}
+            style={{
+              background: "var(--warning)",
+              borderColor: "var(--warning)",
+            }}>
+            {saving ? (
+              <>
+                <Spinner size={13} /> Submitting…
+              </>
+            ) : (
+              "Submit Repair Request"
+            )}
+          </button>
+        </>
+      }>
+      <ErrAlert message={err} />
+      <Field label="Failure Cause / Description" required>
+        <textarea
+          className="input"
+          rows={3}
+          value={form.failureCause}
+          onChange={set("failureCause")}
+          placeholder="Describe what is wrong with the device"
+        />
+      </Field>
+      <Field label="Sent To (Repair Center)">
+        <input
+          className="input"
+          value={form.sentTo}
+          onChange={set("sentTo")}
+          placeholder="e.g. Samsung Service Center Nairobi"
+        />
+      </Field>
+      <Field label="Date Sent">
+        <input
+          className="input"
+          type="date"
+          value={form.sentDate}
+          onChange={set("sentDate")}
+        />
+      </Field>
+      <Field label="Signed Off By">
+        <input
+          className="input"
+          value={form.signedOffBy}
+          onChange={set("signedOffBy")}
+          placeholder="Name of person who signed off the device"
+        />
+      </Field>
+      <AdminContactPicker selected={contacts} onChange={setContacts} />
+    </Modal>
+  );
+};
+
+// ── Transfer Request Modal (FO) ───────────────────────────────────
+const TransferRequestModal = ({ device, onClose, onSuccess }) => {
+  const [facilities, setFacilities] = useState([]);
+  const [destinationId, setDestinationId] = useState("");
+  const [reason, setReason] = useState("");
+  const [contacts, setContacts] = useState([]);
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState("");
+  useEffect(() => {
+    refApi
+      .facilities({ limit: 200 })
+      .then((r) =>
+        setFacilities(
+          (r.data.data || []).filter((f) => f.id !== device.facility_id),
+        ),
+      )
+      .catch(() => {});
+  }, []);
+  const submit = async () => {
+    if (!destinationId) return setErr("Select a destination facility");
+    setSaving(true);
+    try {
+      await transferReqApi.create({
+        deviceId: device.id,
+        destinationFacilityId: parseInt(destinationId),
+        reason,
+        adminContactIds: contacts,
+      });
+      toast.success("Transfer request submitted for approval");
+      onSuccess();
+    } catch (e) {
+      setErr(getMsg(e, "Failed to submit"));
+    } finally {
+      setSaving(false);
+    }
+  };
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      title={`Request Transfer — ${device.serial_number}`}
+      footer={
+        <>
+          <button
+            className="btn btn-outline"
+            onClick={onClose}
+            disabled={saving}>
+            Cancel
+          </button>
+          <button
+            className="btn btn-primary"
+            onClick={submit}
+            disabled={saving}>
+            {saving ? (
+              <>
+                <Spinner size={13} /> Submitting…
+              </>
+            ) : (
+              "Submit Transfer Request"
+            )}
+          </button>
+        </>
+      }>
+      <ErrAlert message={err} />
+      <Field label="Destination Facility" required>
+        <select
+          className="input"
+          value={destinationId}
+          onChange={(e) => setDestinationId(e.target.value)}>
+          <option value="">Select facility…</option>
+          {facilities.map((f) => (
+            <option key={f.id} value={f.id}>
+              {f.name} ({f.mfl_code})
+            </option>
+          ))}
+        </select>
+      </Field>
+      <Field label="Reason">
+        <textarea
+          className="input"
+          rows={2}
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          placeholder="Why is this transfer needed?"
+        />
+      </Field>
+      <AdminContactPicker selected={contacts} onChange={setContacts} />
+    </Modal>
+  );
+};
+
 // ── Main Page ────────────────────────────────────────────────────
 export default function DeviceDetailPage() {
   const { id } = useParams();
@@ -900,6 +1297,9 @@ export default function DeviceDetailPage() {
   const [showEdit, setShowEdit] = useState(false);
   const [showVerify, setShowVerify] = useState(false);
   const [showTransfer, setShowTransfer] = useState(false);
+  const [showReturn, setShowReturn] = useState(false);
+  const [showRepair, setShowRepair] = useState(false);
+  const [showTransferReq, setShowTransferReq] = useState(false);
 
   const load = () => {
     setLoading(true);
@@ -941,9 +1341,18 @@ export default function DeviceDetailPage() {
     );
   if (!device) return null;
 
-  const isLocked = device.locked;
-  const canVerify = isOfficer && !isLocked && device.status !== "lost";
+  const isLocked = !!device.locked;
+  const isActive = device.status === "active";
+  const isReturned = device.status === "returned";
+  const isUnderRepair = device.status === "under_repair";
+  const isRepairPending = device.status === "repair_return_pending";
+  const isPendingTransfer = device.status === "pending_transfer";
+  const canVerify = isOfficer && !isLocked && isActive;
   const canEdit = isOfficer && (!isLocked || isAdmin);
+  const canReturn = isOfficer && isActive;
+  const canRepair =
+    isOfficer && (isActive || device.cover_condition === "damaged");
+  const canTransferReq = isOfficer && !isAdmin && isActive;
 
   return (
     <AppShell title={device.serial_number}>
@@ -963,7 +1372,7 @@ export default function DeviceDetailPage() {
             }}>
             {device.serial_number}
             <StatusBadge status={device.status} />
-            <SimBadge hasSim={device.has_sim} />
+            <SimBadge hasSim={!!device.has_sim} />
             {isLocked && (
               <span
                 style={{
@@ -987,11 +1396,36 @@ export default function DeviceDetailPage() {
           </p>
         </div>
         <div className="hd-actions">
-          {isAdmin && !isLocked && (
+          {isAdmin && isActive && !isLocked && (
             <button
               className="btn btn-outline"
               onClick={() => setShowTransfer(true)}>
               <RiExchangeLine size={14} /> Transfer
+            </button>
+          )}
+          {canTransferReq && (
+            <button
+              className="btn btn-outline"
+              onClick={() => setShowTransferReq(true)}>
+              <RiSendPlaneLine size={14} /> Request Transfer
+            </button>
+          )}
+          {canReturn && (
+            <button
+              className="btn btn-outline"
+              onClick={() => setShowReturn(true)}>
+              <RiArrowGoBackLine size={14} /> Return
+            </button>
+          )}
+          {canRepair && (
+            <button
+              className="btn btn-outline"
+              onClick={() => setShowRepair(true)}
+              style={{
+                borderColor: "var(--warning)",
+                color: "var(--warning)",
+              }}>
+              <RiToolsLine size={14} /> Send for Repair
             </button>
           )}
           {canVerify && (
@@ -1205,6 +1639,36 @@ export default function DeviceDetailPage() {
           onClose={() => setShowTransfer(false)}
           onSuccess={() => {
             setShowTransfer(false);
+            load();
+          }}
+        />
+      )}
+      {showReturn && (
+        <ReturnRequestModal
+          device={device}
+          onClose={() => setShowReturn(false)}
+          onSuccess={() => {
+            setShowReturn(false);
+            load();
+          }}
+        />
+      )}
+      {showRepair && (
+        <RepairRequestModal
+          device={device}
+          onClose={() => setShowRepair(false)}
+          onSuccess={() => {
+            setShowRepair(false);
+            load();
+          }}
+        />
+      )}
+      {showTransferReq && (
+        <TransferRequestModal
+          device={device}
+          onClose={() => setShowTransferReq(false)}
+          onSuccess={() => {
+            setShowTransferReq(false);
             load();
           }}
         />
