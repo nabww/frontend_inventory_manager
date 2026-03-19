@@ -2340,7 +2340,8 @@ export function RepairsPage() {
     totalPages: 1,
   });
   const [loading, setLoading] = useState(true);
-  const [status, setStatus] = useState("under_repair");
+  const [status, setStatus] = useState("pending");
+  const [reviewItem, setReviewItem] = useState(null);
   const [markReturned, setMarkReturned] = useState(null);
   const [reissue, setReissue] = useState(null);
 
@@ -2365,10 +2366,10 @@ export function RepairsPage() {
   }, [fetchRows]);
 
   const statusColors = {
+    pending: "b-partial",
     under_repair: "b-amber",
-    repair_return_pending: "b-partial",
+    repair_return_pending: "b-sim",
     reissued: "b-purple",
-    pending: "b-decomm",
   };
 
   return (
@@ -2388,16 +2389,20 @@ export function RepairsPage() {
             gap: 8,
             flexWrap: "wrap",
           }}>
-          {["", "under_repair", "repair_return_pending", "reissued"].map(
-            (s) => (
-              <button
-                key={s}
-                className={`btn btn-sm ${status === s ? "btn-primary" : "btn-outline"}`}
-                onClick={() => setStatus(s)}>
-                {s.replace(/_/g, " ") || "All"}
-              </button>
-            ),
-          )}
+          {[
+            "",
+            "pending",
+            "under_repair",
+            "repair_return_pending",
+            "reissued",
+          ].map((s) => (
+            <button
+              key={s}
+              className={`btn btn-sm ${status === s ? "btn-primary" : "btn-outline"}`}
+              onClick={() => setStatus(s)}>
+              {s.replace(/_/g, " ") || "All"}
+            </button>
+          ))}
         </div>
       </div>
       <div className="card">
@@ -2461,6 +2466,13 @@ export function RepairsPage() {
                       <div
                         style={{ display: "flex", gap: 4 }}
                         onClick={(e) => e.stopPropagation()}>
+                        {r.status === "pending" && (
+                          <button
+                            className="btn btn-sm btn-primary"
+                            onClick={() => setReviewItem(r)}>
+                            Review
+                          </button>
+                        )}
                         {r.status === "under_repair" && (
                           <button
                             className="btn btn-sm btn-primary"
@@ -2499,6 +2511,16 @@ export function RepairsPage() {
           </div>
         )}
       </div>
+      {reviewItem && (
+        <ReviewRepairModal
+          rp={reviewItem}
+          onClose={() => setReviewItem(null)}
+          onSuccess={() => {
+            setReviewItem(null);
+            fetchRows(pag.page);
+          }}
+        />
+      )}
       {markReturned && (
         <MarkRepairReturnedModal
           rp={markReturned}
@@ -2521,6 +2543,122 @@ export function RepairsPage() {
         />
       )}
     </AppShell>
+  );
+}
+
+function ReviewRepairModal({ rp, onClose, onSuccess }) {
+  const [form, setForm] = useState({
+    status: "under_repair",
+    adminNotes: "",
+    sentTo: rp.sent_to || "",
+    sentDate: rp.sent_date
+      ? rp.sent_date.slice(0, 10)
+      : new Date().toISOString().slice(0, 10),
+    signedOffBy: rp.signed_off_by || "",
+  });
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState("");
+  const set = (f) => (e) => setForm((p) => ({ ...p, [f]: e.target.value }));
+  const submit = async () => {
+    setSaving(true);
+    try {
+      await repairApi.review(rp.id, form);
+      toast.success(
+        form.status === "under_repair"
+          ? "Repair approved — device sent for repair"
+          : "Repair request rejected",
+      );
+      onSuccess();
+    } catch (e) {
+      setErr(getMsg(e, "Failed"));
+    } finally {
+      setSaving(false);
+    }
+  };
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      title={`Review Repair Request — ${rp.serial_number}`}
+      footer={
+        <>
+          <button
+            className="btn btn-outline"
+            onClick={onClose}
+            disabled={saving}>
+            Cancel
+          </button>
+          <button
+            className={`btn ${form.status === "under_repair" ? "btn-primary" : "btn-danger"}`}
+            onClick={submit}
+            disabled={saving}>
+            {saving ? (
+              <>
+                <Spinner size={13} /> Saving…
+              </>
+            ) : form.status === "under_repair" ? (
+              "Approve & Send for Repair"
+            ) : (
+              "Reject"
+            )}
+          </button>
+        </>
+      }>
+      <ErrAlert message={err} />
+      <div
+        style={{
+          background: "var(--accent-bg)",
+          borderRadius: 8,
+          padding: "12px 16px",
+          marginBottom: 16,
+          fontSize: ".85rem",
+        }}>
+        <strong>Failure Cause:</strong> {rp.failure_cause}
+      </div>
+      <Field label="Decision">
+        <select className="input" value={form.status} onChange={set("status")}>
+          <option value="under_repair">Approve — Send for Repair</option>
+          <option value="rejected">Reject</option>
+        </select>
+      </Field>
+      {form.status === "under_repair" && (
+        <>
+          <Field label="Repair Center / Sent To">
+            <input
+              className="input"
+              value={form.sentTo}
+              onChange={set("sentTo")}
+              placeholder="e.g. Samsung Service Center Nairobi"
+            />
+          </Field>
+          <Field label="Date Sent">
+            <input
+              className="input"
+              type="date"
+              value={form.sentDate}
+              onChange={set("sentDate")}
+            />
+          </Field>
+          <Field label="Signed Off By">
+            <input
+              className="input"
+              value={form.signedOffBy}
+              onChange={set("signedOffBy")}
+              placeholder="Name of person who signed off"
+            />
+          </Field>
+        </>
+      )}
+      <Field label="Admin Notes">
+        <textarea
+          className="input"
+          rows={2}
+          value={form.adminNotes}
+          onChange={set("adminNotes")}
+          placeholder="Optional notes to the requester"
+        />
+      </Field>
+    </Modal>
   );
 }
 
