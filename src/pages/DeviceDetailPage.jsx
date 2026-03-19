@@ -1342,12 +1342,16 @@ export default function DeviceDetailPage() {
   if (!device) return null;
 
   const isLocked = !!device.locked;
+<<<<<<< HEAD
   const isActive = device.status === "active";
   const isReturned = device.status === "returned";
   const isUnderRepair = device.status === "under_repair";
   const isRepairPending = device.status === "repair_return_pending";
   const isPendingTransfer = device.status === "pending_transfer";
   const canVerify = isOfficer && !isLocked && isActive;
+=======
+  const canVerify = isOfficer && !isLocked && device.status !== "lost";
+>>>>>>> 2e5393d76611ded461ad711e08d301d703061267
   const canEdit = isOfficer && (!isLocked || isAdmin);
   const canReturn = isOfficer && isActive;
   const canRepair =

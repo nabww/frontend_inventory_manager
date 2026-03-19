@@ -75,12 +75,6 @@ export const deviceApi = {
   unverified: (p) => api.get("/devices/unverified", { params: p }),
 };
 
-export const userApi = {
-  list: (p) => api.get("/users", { params: p }),
-  update: (id, d) => api.patch(`/users/${id}`, d),
-  remove: (id) => api.delete(`/users/${id}`),
-};
-
 export const verifyApi = {
   list: (p) => api.get("/verifications", { params: p }),
 };
@@ -93,6 +87,7 @@ export const simApi = {
   unlink: (id) => api.post(`/sims/${id}/unlink`),
 };
 
+<<<<<<< HEAD
 export const adminContactApi = {
   list: (p) => api.get("/admin-contacts", { params: p }),
   cadres: () => api.get("/admin-contacts/cadres"),
@@ -122,4 +117,11 @@ export const transferReqApi = {
   list: (p) => api.get("/transfer-requests", { params: p }),
   get: (id) => api.get(`/transfer-requests/${id}`),
   review: (id, d) => api.post(`/transfer-requests/${id}/review`, d),
+=======
+export const userApi = {
+  list: (p) => api.get("/users", { params: p }),
+  update: (id, d) => api.patch(`/users/${id}`, d),
+  remove: (id) => api.delete(`/users/${id}`),
+  resendWelcome: (id) => api.post(`/users/${id}/resend-welcome`), // ADD THIS
+>>>>>>> 2e5393d76611ded461ad711e08d301d703061267
 };
