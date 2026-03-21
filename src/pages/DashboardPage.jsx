@@ -24,13 +24,21 @@ const Stat = ({ icon, cls, label, value, sub }) => (
   </div>
 );
 
-const VerificationBar = ({ active, verified }) => {
-  const total = parseInt(active) || 0;
-  const done = parseInt(verified) || 0;
-  const pct = total > 0 ? Math.round((done / total) * 100) : 0;
-  const remaining = total - done;
-  const year = new Date().getFullYear();
+const VerificationBar = ({
+  active,
+  verified,
+  verifiedAndActive,
+  verifiedNoLongerActive,
+}) => {
+  const totalActive = parseInt(active) || 0;
+  const totalVerified = parseInt(verified) || 0;
+  const stillActive = parseInt(verifiedAndActive) || 0;
+  const noLongerActive = parseInt(verifiedNoLongerActive) || 0;
 
+  const pct =
+    totalActive > 0 ? Math.round((stillActive / totalActive) * 100) : 0;
+  const remaining = totalActive - stillActive;
+  const year = new Date().getFullYear();
   const color = pct === 100 ? "#10b981" : pct >= 60 ? "#f59e0b" : "#ef4444";
 
   return (
@@ -48,7 +56,6 @@ const VerificationBar = ({ active, verified }) => {
         </span>
       </div>
       <div className="card-body">
-        {/* Bar */}
         <div
           style={{
             height: 14,
@@ -69,19 +76,20 @@ const VerificationBar = ({ active, verified }) => {
                     ? "linear-gradient(90deg,#f59e0b,#fbbf24)"
                     : "linear-gradient(90deg,#ef4444,#f87171)",
               transition: "width .6s ease",
-              minWidth: done > 0 ? 14 : 0,
+              minWidth: stillActive > 0 ? 14 : 0,
             }}
           />
         </div>
 
-        {/* Counts */}
         <div
           style={{
             display: "flex",
             justifyContent: "space-between",
-            alignItems: "center",
+            alignItems: "flex-start",
+            flexWrap: "wrap",
+            gap: 12,
           }}>
-          <div style={{ display: "flex", gap: 22 }}>
+          <div style={{ display: "flex", gap: 22, flexWrap: "wrap" }}>
             <div>
               <div
                 style={{
@@ -90,9 +98,22 @@ const VerificationBar = ({ active, verified }) => {
                   fontFamily: "Syne,sans-serif",
                   color: "#10b981",
                 }}>
-                {done}
+                {totalVerified}
               </div>
-              <div className="dim">Verified</div>
+              <div className="dim">Verified this year</div>
+              {noLongerActive > 0 && (
+                <div
+                  style={{
+                    fontSize: ".72rem",
+                    color: "var(--text-3)",
+                    marginTop: 2,
+                  }}>
+                  {stillActive} active ·{" "}
+                  <span style={{ color: "var(--warning)" }}>
+                    {noLongerActive} no longer active
+                  </span>
+                </div>
+              )}
             </div>
             <div>
               <div
@@ -104,7 +125,7 @@ const VerificationBar = ({ active, verified }) => {
                 }}>
                 {remaining}
               </div>
-              <div className="dim">Remaining</div>
+              <div className="dim">Active unverified</div>
             </div>
             <div>
               <div
@@ -114,9 +135,9 @@ const VerificationBar = ({ active, verified }) => {
                   fontFamily: "Syne,sans-serif",
                   color: "var(--text)",
                 }}>
-                {total}
+                {totalActive}
               </div>
-              <div className="dim">Active Devices</div>
+              <div className="dim">Total active</div>
             </div>
           </div>
 
@@ -124,7 +145,7 @@ const VerificationBar = ({ active, verified }) => {
             <span
               className="badge b-active"
               style={{ fontSize: ".78rem", padding: "4px 12px" }}>
-              ✓ All verified!
+              ✓ All active devices verified!
             </span>
           ) : (
             <span
@@ -174,7 +195,6 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Stats */}
       <div className="grid g4 mb-22">
         <Stat
           icon={<RiTabletLine />}
@@ -206,7 +226,6 @@ export default function DashboardPage() {
         />
       </div>
 
-      {/* Tables */}
       <div className="grid g2 mb-22">
         {/* Unverified this year */}
         <div
@@ -352,10 +371,11 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Verification progress bar — bottom */}
       <VerificationBar
         active={stats?.active_devices}
         verified={stats?.verified_this_year}
+        verifiedAndActive={stats?.verified_and_active}
+        verifiedNoLongerActive={stats?.verified_no_longer_active}
       />
     </AppShell>
   );
