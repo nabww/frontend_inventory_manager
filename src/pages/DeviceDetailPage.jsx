@@ -69,7 +69,6 @@ const Section = ({ title, children }) => (
   </div>
 );
 
-// ── Loss Report Modal ────────────────────────────────────────────
 const LossReportModal = ({ serialNumber, onConfirm, onCancel }) => {
   const [form, setForm] = useState({
     dateLost: new Date().toISOString().slice(0, 10),
@@ -144,7 +143,7 @@ const LossReportModal = ({ serialNumber, onConfirm, onCancel }) => {
   );
 
   return (
-    <div className="overlay" onClick={onCancel}>
+    <div className="overlay">
       <div className="modal modal-lg" onClick={(e) => e.stopPropagation()}>
         <div className="modal-head">
           <h2 className="modal-title">
@@ -253,7 +252,6 @@ const LossReportModal = ({ serialNumber, onConfirm, onCancel }) => {
   );
 };
 
-// ── Transfer Modal ───────────────────────────────────────────────
 const TransferModal = ({ device, onClose, onSuccess }) => {
   const [facilities, setFacilities] = useState([]);
   const [counties, setCounties] = useState([]);
@@ -370,7 +368,6 @@ const TransferModal = ({ device, onClose, onSuccess }) => {
   );
 };
 
-// ── Verify Modal ─────────────────────────────────────────────────
 const VerifyModal = ({ device, onClose, onSuccess }) => {
   const [form, setForm] = useState({
     devicePresent: true,
@@ -392,7 +389,6 @@ const VerifyModal = ({ device, onClose, onSuccess }) => {
     }));
 
   const submit = async () => {
-    // If marked lost, save verification first then open loss report modal
     if (form.overallStatus === "lost") {
       setLoading(true);
       try {
@@ -544,7 +540,6 @@ const VerifyModal = ({ device, onClose, onSuccess }) => {
   );
 };
 
-// ── Loss Report Card (admin actions) ────────────────────────────
 const LossReportCard = ({ device, report, onAction }) => {
   const [action, setAction] = useState("");
   const [notes, setNotes] = useState("");
@@ -553,12 +548,11 @@ const LossReportCard = ({ device, report, onAction }) => {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (action === "escalate") {
+    if (action === "escalate")
       refApi
         .escalationTargets()
         .then((r) => setUsers(r.data.data))
         .catch(() => {});
-    }
   }, [action]);
 
   const statusColor = {
@@ -630,9 +624,7 @@ const LossReportCard = ({ device, report, onAction }) => {
                         ? "incident-report.pdf"
                         : "police-ob.pdf";
                     a.click();
-                  } else {
-                    window.open(url, "_blank");
-                  }
+                  } else window.open(url, "_blank");
                   setTimeout(() => URL.revokeObjectURL(url), 10000);
                 } catch {
                   toast.error("Could not load document");
@@ -715,7 +707,6 @@ const LossReportCard = ({ device, report, onAction }) => {
           )}
         </div>
 
-        {/* Admin actions — only for pending/escalated reports */}
         {["pending", "escalated"].includes(report.status) && (
           <div
             style={{
@@ -769,7 +760,6 @@ const LossReportCard = ({ device, report, onAction }) => {
                 </label>
               ))}
             </div>
-
             {action === "escalate" && (
               <Field label="Escalate To" style={{ marginBottom: 12 }}>
                 {users.length === 0 ? (
@@ -843,7 +833,6 @@ const LossReportCard = ({ device, report, onAction }) => {
                 )}
               </Field>
             )}
-
             <Field
               label={action === "reject" ? "Reason (required)" : "Admin Notes"}>
               <textarea
@@ -858,7 +847,6 @@ const LossReportCard = ({ device, report, onAction }) => {
                 }
               />
             </Field>
-
             <div
               style={{
                 display: "flex",
@@ -880,8 +868,6 @@ const LossReportCard = ({ device, report, onAction }) => {
             </div>
           </div>
         )}
-
-        {/* Recover button — shown for acknowledged/escalated/pending lost devices */}
         {device.status === "lost" &&
           !["rejected", "recovered"].includes(report.status) && (
             <RecoverSection deviceId={device.id} onAction={onAction} />
@@ -895,7 +881,6 @@ const RecoverSection = ({ deviceId, onAction }) => {
   const [show, setShow] = useState(false);
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
-
   const submit = async () => {
     if (!notes.trim()) return toast.error("Recovery reason is required");
     setSaving(true);
@@ -905,7 +890,6 @@ const RecoverSection = ({ deviceId, onAction }) => {
       setSaving(false);
     }
   };
-
   return (
     <div
       style={{
@@ -959,7 +943,6 @@ const RecoverSection = ({ deviceId, onAction }) => {
   );
 };
 
-// ── AdminContact picker (shared) ─────────────────────────────────
 const AdminContactPicker = ({
   selected,
   onChange,
@@ -1032,7 +1015,6 @@ const AdminContactPicker = ({
   );
 };
 
-// ── Return Request Modal ──────────────────────────────────────────
 const ReturnRequestModal = ({ device, onClose, onSuccess }) => {
   const [reason, setReason] = useState("");
   const [contacts, setContacts] = useState([]);
@@ -1097,28 +1079,22 @@ const ReturnRequestModal = ({ device, onClose, onSuccess }) => {
   );
 };
 
-// ── Repair Request Modal ──────────────────────────────────────────
+// ── Repair Request Modal (FO — failure cause only, admin handles rest) ──
 const RepairRequestModal = ({ device, onClose, onSuccess }) => {
-  const [form, setForm] = useState({
-    failureCause: "",
-    sentTo: "",
-    sentDate: new Date().toISOString().slice(0, 10),
-    signedOffBy: "",
-  });
+  const [failureCause, setFailureCause] = useState("");
   const [contacts, setContacts] = useState([]);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState("");
-  const set = (f) => (e) => setForm((p) => ({ ...p, [f]: e.target.value }));
   const submit = async () => {
-    if (!form.failureCause.trim()) return setErr("Failure cause is required");
+    if (!failureCause.trim()) return setErr("Failure cause is required");
     setSaving(true);
     try {
       await repairApi.create({
         deviceId: device.id,
-        ...form,
+        failureCause,
         adminContactIds: contacts,
       });
-      toast.success("Repair request submitted");
+      toast.success("Repair request submitted — admins have been notified");
       onSuccess();
     } catch (e) {
       setErr(getMsg(e, "Failed to submit"));
@@ -1130,7 +1106,7 @@ const RepairRequestModal = ({ device, onClose, onSuccess }) => {
     <Modal
       open
       onClose={onClose}
-      title={`Send for Repair — ${device.serial_number}`}
+      title={`Request Repair — ${device.serial_number}`}
       footer={
         <>
           <button
@@ -1162,33 +1138,9 @@ const RepairRequestModal = ({ device, onClose, onSuccess }) => {
         <textarea
           className="input"
           rows={3}
-          value={form.failureCause}
-          onChange={set("failureCause")}
+          value={failureCause}
+          onChange={(e) => setFailureCause(e.target.value)}
           placeholder="Describe what is wrong with the device"
-        />
-      </Field>
-      <Field label="Sent To (Repair Center)">
-        <input
-          className="input"
-          value={form.sentTo}
-          onChange={set("sentTo")}
-          placeholder="e.g. Samsung Service Center Nairobi"
-        />
-      </Field>
-      <Field label="Date Sent">
-        <input
-          className="input"
-          type="date"
-          value={form.sentDate}
-          onChange={set("sentDate")}
-        />
-      </Field>
-      <Field label="Signed Off By">
-        <input
-          className="input"
-          value={form.signedOffBy}
-          onChange={set("signedOffBy")}
-          placeholder="Name of person who signed off the device"
         />
       </Field>
       <AdminContactPicker selected={contacts} onChange={setContacts} />
@@ -1196,7 +1148,6 @@ const RepairRequestModal = ({ device, onClose, onSuccess }) => {
   );
 };
 
-// ── Transfer Request Modal (FO) ───────────────────────────────────
 const TransferRequestModal = ({ device, onClose, onSuccess }) => {
   const [facilities, setFacilities] = useState([]);
   const [destinationId, setDestinationId] = useState("");
@@ -1287,7 +1238,6 @@ const TransferRequestModal = ({ device, onClose, onSuccess }) => {
   );
 };
 
-// ── Main Page ────────────────────────────────────────────────────
 export default function DeviceDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -1343,10 +1293,6 @@ export default function DeviceDetailPage() {
 
   const isLocked = !!device.locked;
   const isActive = device.status === "active";
-  const isReturned = device.status === "returned";
-  const isUnderRepair = device.status === "under_repair";
-  const isRepairPending = device.status === "repair_return_pending";
-  const isPendingTransfer = device.status === "pending_transfer";
   const canVerify = isOfficer && !isLocked && isActive;
   const canEdit = isOfficer && (!isLocked || isAdmin);
   const canReturn = isOfficer && isActive;
@@ -1360,8 +1306,8 @@ export default function DeviceDetailPage() {
         <div>
           <button
             className="btn btn-ghost btn-sm mb-8"
-            onClick={() => navigate("/devices")}>
-            <RiArrowLeftLine size={13} /> Back to devices
+            onClick={() => navigate(-1)}>
+            <RiArrowLeftLine size={13} /> Back
           </button>
           <h1
             style={{
@@ -1425,7 +1371,7 @@ export default function DeviceDetailPage() {
                 borderColor: "var(--warning)",
                 color: "var(--warning)",
               }}>
-              <RiToolsLine size={14} /> Send for Repair
+              <RiToolsLine size={14} /> Request Repair
             </button>
           )}
           {canVerify && (
@@ -1445,7 +1391,6 @@ export default function DeviceDetailPage() {
         </div>
       </div>
 
-      {/* Loss Report Card — shown when device has a loss report */}
       {device.lossReport && isAdmin && (
         <LossReportCard
           device={device}
@@ -1453,7 +1398,6 @@ export default function DeviceDetailPage() {
           onAction={handleLossAction}
         />
       )}
-      {/* Non-admin view of loss status */}
       {device.lossReport && !isAdmin && (
         <div
           style={{

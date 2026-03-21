@@ -57,7 +57,7 @@ const ChangePasswordModal = ({ onClose }) => {
   };
 
   return (
-    <div className="overlay" onClick={onClose}>
+    <div className="overlay">
       <div
         className="modal"
         style={{ maxWidth: 400 }}

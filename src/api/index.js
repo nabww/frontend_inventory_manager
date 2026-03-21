@@ -110,17 +110,18 @@ export const returnApi = {
   reissue: (id, d) => api.post(`/returns/${id}/reissue`, d),
 };
 
-export const repairApi = {
-  create: (d) => api.post("/repairs", d),
-  list: (p) => api.get("/repairs", { params: p }),
-  get: (id) => api.get(`/repairs/${id}`),
-  markReturned: (id, d) => api.post(`/repairs/${id}/mark-returned`, d),
-  reissue: (id, d) => api.post(`/repairs/${id}/reissue`, d),
-};
-
 export const transferReqApi = {
   create: (d) => api.post("/transfer-requests", d),
   list: (p) => api.get("/transfer-requests", { params: p }),
   get: (id) => api.get(`/transfer-requests/${id}`),
   review: (id, d) => api.post(`/transfer-requests/${id}/review`, d),
+};
+export const repairApi = {
+  create: (d) => api.post("/repairs", d),
+  list: (p) => api.get("/repairs", { params: p }),
+  get: (id) => api.get(`/repairs/${id}`),
+  // is this line here?
+  review: (id, d) => api.post(`/repairs/${id}/review`, d),
+  markReturned: (id, d) => api.post(`/repairs/${id}/mark-returned`, d),
+  reissue: (id, d) => api.post(`/repairs/${id}/reissue`, d),
 };
