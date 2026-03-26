@@ -355,7 +355,7 @@ export default function DeviceFormModal({ device, onClose, onSuccess }) {
     ? facilities.filter((f) => String(f.county_id) === String(selectedCounty))
     : facilities;
 
-  const isLocked = device?.locked;
+  const isLocked = !!device?.locked;
 
   return (
     <>
