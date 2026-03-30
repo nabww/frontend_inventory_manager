@@ -827,9 +827,28 @@ export function UsersPage() {
                         {u.zone_county_name}
                       </span>
                     ) : u.zone_type === "sub_county" ? (
-                      <span className="badge b-partial">
-                        {u.zone_sub_county_name}
-                      </span>
+                      <div
+                        style={{ display: "flex", flexWrap: "wrap", gap: 3 }}>
+                        {(u.zone_sub_counties || []).length === 0 ? (
+                          <span className="td-dim">No sub-counties</span>
+                        ) : (
+                          (u.zone_sub_counties || []).slice(0, 2).map((s) => (
+                            <span
+                              key={s.id}
+                              className="badge b-partial"
+                              style={{ fontSize: ".65rem" }}>
+                              {s.name}
+                            </span>
+                          ))
+                        )}
+                        {(u.zone_sub_counties || []).length > 2 && (
+                          <span
+                            className="badge b-purple"
+                            style={{ fontSize: ".65rem" }}>
+                            +{u.zone_sub_counties.length - 2} more
+                          </span>
+                        )}
+                      </div>
                     ) : u.zone_type === "facility" ? (
                       <div
                         style={{ display: "flex", flexWrap: "wrap", gap: 3 }}>
@@ -977,11 +996,13 @@ export function UsersPage() {
 
 function UserFormModal({ user, onClose, onSuccess }) {
   const isEdit = !!user;
+
   const ROLES = [
     { id: 1, label: "Viewer" },
     { id: 2, label: "Field Officer" },
     { id: 3, label: "Administrator" },
   ];
+
   const ZONE_TYPES = [
     { value: "all", label: "All (no restriction)" },
     { value: "county", label: "County" },
@@ -996,7 +1017,7 @@ function UserFormModal({ user, onClose, onSuccess }) {
           isActive: user.is_active,
           zoneType: user.zone_type || "all",
           zoneCountyId: user.zone_county_id || "",
-          zoneSubCountyId: user.zone_sub_county_id || "",
+          subCountyIds: (user.zone_sub_counties || []).map((s) => s.id),
           facilityIds: (user.zone_facilities || []).map((f) => f.id),
         }
       : {
@@ -1006,10 +1027,11 @@ function UserFormModal({ user, onClose, onSuccess }) {
           roleId: 1,
           zoneType: "all",
           zoneCountyId: "",
-          zoneSubCountyId: "",
+          subCountyIds: [],
           facilityIds: [],
         },
   );
+
   const [counties, setCounties] = useState([]);
   const [subCounties, setSubCounties] = useState([]);
   const [facilities, setFacilities] = useState([]);
@@ -1017,18 +1039,14 @@ function UserFormModal({ user, onClose, onSuccess }) {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    refApi
-      .counties()
-      .then((r) => setCounties(r.data.data || []))
-      .catch(() => {});
+    refApi.counties().then((r) => setCounties(r.data.data || []));
   }, []);
 
   useEffect(() => {
     if (form.zoneCountyId) {
       refApi
         .subCounties(form.zoneCountyId)
-        .then((r) => setSubCounties(r.data.data || []))
-        .catch(() => {});
+        .then((r) => setSubCounties(r.data.data || []));
     } else {
       setSubCounties([]);
     }
@@ -1039,10 +1057,7 @@ function UserFormModal({ user, onClose, onSuccess }) {
       const params = form.zoneCountyId
         ? { countyId: form.zoneCountyId, limit: 200 }
         : { limit: 200 };
-      refApi
-        .facilities(params)
-        .then((r) => setFacilities(r.data.data || []))
-        .catch(() => {});
+      refApi.facilities(params).then((r) => setFacilities(r.data.data || []));
     }
   }, [form.zoneType, form.zoneCountyId]);
 
@@ -1054,27 +1069,40 @@ function UserFormModal({ user, onClose, onSuccess }) {
           : f === "isActive"
             ? e.target.value === "1"
             : e.target.value;
+
       const next = { ...p, [f]: val };
-      // Reset downstream when zone type changes
+
+      // Reset downstream when county changes
+      if (f === "zoneCountyId") {
+        next.subCountyIds = [];
+        next.facilityIds = [];
+      }
+
+      // Reset everything when zone type changes
       if (f === "zoneType") {
         next.zoneCountyId = "";
-        next.zoneSubCountyId = "";
+        next.subCountyIds = [];
         next.facilityIds = [];
       }
-      if (f === "zoneCountyId") {
-        next.zoneSubCountyId = "";
-        next.facilityIds = [];
-      }
+
       return next;
     });
 
   const toggleFacility = (id) =>
-    setForm((p) => {
-      const ids = p.facilityIds.includes(id)
+    setForm((p) => ({
+      ...p,
+      facilityIds: p.facilityIds.includes(id)
         ? p.facilityIds.filter((x) => x !== id)
-        : [...p.facilityIds, id];
-      return { ...p, facilityIds: ids };
-    });
+        : [...p.facilityIds, id],
+    }));
+
+  const toggleSubCounty = (id) =>
+    setForm((p) => ({
+      ...p,
+      subCountyIds: p.subCountyIds.includes(id)
+        ? p.subCountyIds.filter((x) => x !== id)
+        : [...p.subCountyIds, id],
+    }));
 
   const submit = async () => {
     setSaving(true);
@@ -1085,12 +1113,10 @@ function UserFormModal({ user, onClose, onSuccess }) {
           form.zoneType !== "all" && form.zoneCountyId
             ? parseInt(form.zoneCountyId)
             : null,
-        zoneSubCountyId:
-          form.zoneType === "sub_county" && form.zoneSubCountyId
-            ? parseInt(form.zoneSubCountyId)
-            : null,
+        subCountyIds: form.zoneType === "sub_county" ? form.subCountyIds : [],
         facilityIds: form.zoneType === "facility" ? form.facilityIds : [],
       };
+
       if (isEdit) {
         await userApi.update(user.id, payload);
         toast.success("User updated");
@@ -1098,6 +1124,7 @@ function UserFormModal({ user, onClose, onSuccess }) {
         await authApi.register(payload);
         toast.success("User created");
       }
+
       onSuccess();
     } catch (err) {
       setApiErr(getMsg(err, "Failed"));
@@ -1136,6 +1163,7 @@ function UserFormModal({ user, onClose, onSuccess }) {
         </>
       }>
       <ErrAlert message={apiErr} />
+
       {!isEdit && (
         <>
           <Field label="Full Name" required>
@@ -1143,7 +1171,6 @@ function UserFormModal({ user, onClose, onSuccess }) {
               className="input"
               value={form.fullName}
               onChange={set("fullName")}
-              placeholder="Jane Doe"
             />
           </Field>
           <Field label="Email" required>
@@ -1152,7 +1179,6 @@ function UserFormModal({ user, onClose, onSuccess }) {
               type="email"
               value={form.email}
               onChange={set("email")}
-              placeholder="jane@org.org"
             />
           </Field>
           <Field label="Password" required>
@@ -1161,11 +1187,11 @@ function UserFormModal({ user, onClose, onSuccess }) {
               type="password"
               value={form.password}
               onChange={set("password")}
-              placeholder="Min 8 chars, 1 uppercase, 1 number"
             />
           </Field>
         </>
       )}
+
       <Field label="Role">
         <select className="input" value={form.roleId} onChange={set("roleId")}>
           {ROLES.map((r) => (
@@ -1175,6 +1201,7 @@ function UserFormModal({ user, onClose, onSuccess }) {
           ))}
         </select>
       </Field>
+
       {isEdit && (
         <Field label="Account Status">
           <select
@@ -1187,24 +1214,13 @@ function UserFormModal({ user, onClose, onSuccess }) {
         </Field>
       )}
 
-      {/* Zone / scope */}
+      {/* Zone */}
       <div
         style={{
           borderTop: "1px solid var(--border)",
           paddingTop: 14,
           marginTop: 4,
         }}>
-        <div
-          style={{
-            fontWeight: 600,
-            fontSize: ".8rem",
-            color: "var(--text-3)",
-            marginBottom: 10,
-            textTransform: "uppercase",
-            letterSpacing: ".05em",
-          }}>
-          Data Zone (Scope)
-        </div>
         <Field label="Zone Level">
           <select
             className="input"
@@ -1217,15 +1233,15 @@ function UserFormModal({ user, onClose, onSuccess }) {
             ))}
           </select>
         </Field>
-        {(form.zoneType === "county" ||
-          form.zoneType === "sub_county" ||
-          form.zoneType === "facility") && (
+
+        {/* County */}
+        {form.zoneType !== "all" && (
           <Field label="County">
             <select
               className="input"
               value={form.zoneCountyId}
               onChange={set("zoneCountyId")}>
-              <option value="">— Select county —</option>
+              <option value="">Select county</option>
               {counties.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
@@ -1234,28 +1250,17 @@ function UserFormModal({ user, onClose, onSuccess }) {
             </select>
           </Field>
         )}
-        {form.zoneType === "sub_county" && form.zoneCountyId && (
-          <Field label="Sub-County">
-            <select
-              className="input"
-              value={form.zoneSubCountyId}
-              onChange={set("zoneSubCountyId")}>
-              <option value="">— Select sub-county —</option>
-              {subCounties.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
-          </Field>
-        )}
-        {form.zoneType === "facility" && (
-          <Field label="Facilities">
-            {facilities.length === 0 ? (
+
+        {/* Sub Counties */}
+        {form.zoneType === "sub_county" && (
+          <Field label="Sub-Counties">
+            {!form.zoneCountyId ? (
               <div className="td-dim" style={{ fontSize: ".85rem" }}>
-                {form.zoneCountyId
-                  ? "Loading facilities…"
-                  : "Select a county first to filter facilities"}
+                Select a county first to filter sub-counties
+              </div>
+            ) : subCounties.length === 0 ? (
+              <div className="td-dim" style={{ fontSize: ".85rem" }}>
+                Loading…
               </div>
             ) : (
               <div
@@ -1265,9 +1270,9 @@ function UserFormModal({ user, onClose, onSuccess }) {
                   maxHeight: 220,
                   overflowY: "auto",
                 }}>
-                {facilities.map((f) => (
+                {subCounties.map((s) => (
                   <label
-                    key={f.id}
+                    key={s.id}
                     style={{
                       display: "flex",
                       alignItems: "center",
@@ -1275,14 +1280,14 @@ function UserFormModal({ user, onClose, onSuccess }) {
                       padding: "9px 14px",
                       cursor: "pointer",
                       borderBottom: "1px solid var(--border)",
-                      background: form.facilityIds.includes(f.id)
+                      background: form.subCountyIds.includes(s.id)
                         ? "var(--accent-bg)"
                         : "transparent",
                     }}>
                     <input
                       type="checkbox"
-                      checked={form.facilityIds.includes(f.id)}
-                      onChange={() => toggleFacility(f.id)}
+                      checked={form.subCountyIds.includes(s.id)}
+                      onChange={() => toggleSubCounty(s.id)}
                       style={{
                         accentColor: "var(--primary)",
                         width: 15,
@@ -1290,16 +1295,14 @@ function UserFormModal({ user, onClose, onSuccess }) {
                       }}
                     />
                     <span style={{ flex: 1, fontSize: ".875rem" }}>
-                      {f.name}
-                    </span>
-                    <span className="td-dim" style={{ fontSize: ".75rem" }}>
-                      {f.mfl_code}
+                      {s.name}
                     </span>
                   </label>
                 ))}
               </div>
             )}
-            {form.facilityIds.length > 0 && (
+
+            {form.subCountyIds.length > 0 && (
               <div
                 style={{
                   fontSize: ".78rem",
@@ -1307,8 +1310,30 @@ function UserFormModal({ user, onClose, onSuccess }) {
                   marginTop: 6,
                   fontWeight: 600,
                 }}>
-                {form.facilityIds.length} facilit
-                {form.facilityIds.length === 1 ? "y" : "ies"} selected
+                {form.subCountyIds.length} sub-count
+                {form.subCountyIds.length === 1 ? "y" : "ies"} selected
+              </div>
+            )}
+          </Field>
+        )}
+
+        {/* Facilities */}
+        {form.zoneType === "facility" && (
+          <Field label="Facilities">
+            {!form.zoneCountyId ? (
+              <div className="td-dim">Select a county first</div>
+            ) : (
+              <div style={{ maxHeight: 200, overflowY: "auto" }}>
+                {facilities.map((f) => (
+                  <label key={f.id}>
+                    <input
+                      type="checkbox"
+                      checked={form.facilityIds.includes(f.id)}
+                      onChange={() => toggleFacility(f.id)}
+                    />
+                    {f.name}
+                  </label>
+                ))}
               </div>
             )}
           </Field>
