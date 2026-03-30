@@ -1321,19 +1321,70 @@ function UserFormModal({ user, onClose, onSuccess }) {
         {form.zoneType === "facility" && (
           <Field label="Facilities">
             {!form.zoneCountyId ? (
-              <div className="td-dim">Select a county first</div>
+              <div className="td-dim" style={{ fontSize: ".85rem" }}>
+                Select a county first to filter facilities
+              </div>
+            ) : facilities.length === 0 ? (
+              <div className="td-dim" style={{ fontSize: ".85rem" }}>
+                Loading facilities…
+              </div>
             ) : (
-              <div style={{ maxHeight: 200, overflowY: "auto" }}>
+              <div
+                style={{
+                  border: "1px solid var(--border)",
+                  borderRadius: 8,
+                  maxHeight: 220,
+                  overflowY: "auto",
+                }}>
                 {facilities.map((f) => (
-                  <label key={f.id}>
+                  <label
+                    key={f.id}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 10,
+                      padding: "9px 14px",
+                      cursor: "pointer",
+                      borderBottom: "1px solid var(--border)",
+                      background: form.facilityIds.includes(f.id)
+                        ? "var(--accent-bg)"
+                        : "transparent",
+                    }}>
                     <input
                       type="checkbox"
                       checked={form.facilityIds.includes(f.id)}
                       onChange={() => toggleFacility(f.id)}
+                      style={{
+                        accentColor: "var(--primary)",
+                        width: 15,
+                        height: 15,
+                      }}
                     />
-                    {f.name}
+
+                    <span style={{ flex: 1, fontSize: ".875rem" }}>
+                      {f.name}
+                    </span>
+
+                    <span
+                      className="td-dim"
+                      style={{ fontSize: ".75rem", whiteSpace: "nowrap" }}>
+                      {f.mfl_code}
+                    </span>
                   </label>
                 ))}
+              </div>
+            )}
+
+            {form.facilityIds.length > 0 && (
+              <div
+                style={{
+                  fontSize: ".78rem",
+                  color: "var(--primary)",
+                  marginTop: 6,
+                  fontWeight: 600,
+                }}>
+                {form.facilityIds.length} facilit
+                {form.facilityIds.length === 1 ? "y" : "ies"} selected
               </div>
             )}
           </Field>
