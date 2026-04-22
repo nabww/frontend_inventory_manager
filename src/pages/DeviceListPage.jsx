@@ -20,6 +20,8 @@ import {
   RiEyeLine,
   RiEditLine,
   RiLockLine,
+  RiFilterLine,
+  RiCloseLine,
 } from "react-icons/ri";
 import { useAuth } from "../contexts";
 import { format } from "date-fns";
@@ -41,7 +43,12 @@ export default function DeviceListPage() {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
   const [countyId, setCountyId] = useState("");
+  const [affiliationId, setAffiliationId] = useState("");
+  const [hasSim, setHasSim] = useState("");
+  const [coverCond, setCoverCond] = useState("");
+  const [showFilters, setShowFilters] = useState(false);
   const [counties, setCounties] = useState([]);
+  const [affiliations, setAffiliations] = useState([]);
   const [deleteId, setDeleteId] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [showForm, setShowForm] = useState(false);
@@ -50,8 +57,27 @@ export default function DeviceListPage() {
   const fileRef = useRef();
 
   useEffect(() => {
-    refApi.counties().then((r) => setCounties(r.data.data));
+    Promise.all([refApi.counties(), refApi.affiliations()]).then(([c, a]) => {
+      setCounties(c.data.data);
+      setAffiliations(a.data.data);
+    });
   }, []);
+
+  const activeFilterCount = [
+    status,
+    countyId,
+    affiliationId,
+    hasSim,
+    coverCond,
+  ].filter(Boolean).length;
+
+  const clearFilters = () => {
+    setStatus("");
+    setCountyId("");
+    setAffiliationId("");
+    setHasSim("");
+    setCoverCond("");
+  };
 
   const fetch = useCallback(
     async (page = 1) => {
@@ -63,6 +89,9 @@ export default function DeviceListPage() {
           search,
           status,
           countyId,
+          affiliationId,
+          hasSim,
+          coverCondition: coverCond,
         });
         setDevices(r.data.data);
         setPag(r.data.pagination);
@@ -72,7 +101,7 @@ export default function DeviceListPage() {
         setLoading(false);
       }
     },
-    [search, status, countyId],
+    [search, status, countyId, affiliationId, hasSim, coverCond],
   );
 
   useEffect(() => {
@@ -97,7 +126,14 @@ export default function DeviceListPage() {
   const handleExport = async () => {
     setExporting(true);
     try {
-      const r = await deviceApi.export({ search, status, countyId });
+      const r = await deviceApi.export({
+        search,
+        status,
+        countyId,
+        affiliationId,
+        hasSim,
+        coverCondition: coverCond,
+      });
       const url = URL.createObjectURL(new Blob([r.data]));
       const a = document.createElement("a");
       a.href = url;
@@ -131,7 +167,6 @@ export default function DeviceListPage() {
     setEditDevice(null);
     fetch(pag.page);
   };
-
   const canEdit = (d) => isOfficer && (!d.locked || isAdmin);
 
   return (
@@ -180,8 +215,15 @@ export default function DeviceListPage() {
 
       <div className="card mb-16">
         <div className="card-body" style={{ padding: "12px 18px" }}>
-          <div className="filter-bar">
-            <div className="search-wrap">
+          {/* Search + filter toggle row */}
+          <div
+            style={{
+              display: "flex",
+              gap: 10,
+              alignItems: "center",
+              flexWrap: "wrap",
+            }}>
+            <div className="search-wrap" style={{ flex: 1 }}>
               <RiSearchLine className="search-ic" />
               <input
                 className="input"
@@ -190,30 +232,148 @@ export default function DeviceListPage() {
                 onChange={(e) => setSearch(e.target.value)}
               />
             </div>
-            <select
-              className="input"
-              style={{ width: "auto" }}
-              value={status}
-              onChange={(e) => setStatus(e.target.value)}>
-              <option value="">All statuses</option>
-              <option value="active">Active</option>
-              <option value="under_repair">Under Repair</option>
-              <option value="decommissioned">Decommissioned</option>
-              <option value="lost">Lost</option>
-            </select>
-            <select
-              className="input"
-              style={{ width: "auto" }}
-              value={countyId}
-              onChange={(e) => setCountyId(e.target.value)}>
-              <option value="">All counties</option>
-              {counties.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
+            <button
+              className={`btn ${showFilters || activeFilterCount > 0 ? "btn-primary" : "btn-outline"}`}
+              onClick={() => setShowFilters((p) => !p)}>
+              <RiFilterLine size={14} />
+              Filters {activeFilterCount > 0 && `(${activeFilterCount})`}
+            </button>
+            {activeFilterCount > 0 && (
+              <button
+                className="btn btn-ghost btn-sm"
+                onClick={clearFilters}
+                title="Clear filters">
+                <RiCloseLine size={14} /> Clear
+              </button>
+            )}
           </div>
+
+          {/* Expanded filters */}
+          {showFilters && (
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill,minmax(160px,1fr))",
+                gap: 10,
+                marginTop: 12,
+              }}>
+              <div>
+                <div
+                  style={{
+                    fontSize: ".72rem",
+                    fontWeight: 600,
+                    color: "var(--text-3)",
+                    marginBottom: 4,
+                    textTransform: "uppercase",
+                  }}>
+                  Status
+                </div>
+                <select
+                  className="input"
+                  value={status}
+                  onChange={(e) => setStatus(e.target.value)}>
+                  <option value="">All</option>
+                  <option value="active">Active</option>
+                  <option value="under_repair">Under Repair</option>
+                  <option value="repair_return_pending">
+                    Repair Return Pending
+                  </option>
+                  <option value="returned">Returned</option>
+                  <option value="pending_transfer">Pending Transfer</option>
+                  <option value="decommissioned">Decommissioned</option>
+                  <option value="lost">Lost</option>
+                </select>
+              </div>
+              <div>
+                <div
+                  style={{
+                    fontSize: ".72rem",
+                    fontWeight: 600,
+                    color: "var(--text-3)",
+                    marginBottom: 4,
+                    textTransform: "uppercase",
+                  }}>
+                  SIM Card
+                </div>
+                <select
+                  className="input"
+                  value={hasSim}
+                  onChange={(e) => setHasSim(e.target.value)}>
+                  <option value="">All</option>
+                  <option value="1">With SIM</option>
+                  <option value="0">WiFi Only</option>
+                </select>
+              </div>
+              <div>
+                <div
+                  style={{
+                    fontSize: ".72rem",
+                    fontWeight: 600,
+                    color: "var(--text-3)",
+                    marginBottom: 4,
+                    textTransform: "uppercase",
+                  }}>
+                  Cover Condition
+                </div>
+                <select
+                  className="input"
+                  value={coverCond}
+                  onChange={(e) => setCoverCond(e.target.value)}>
+                  <option value="">All</option>
+                  <option value="good">Good</option>
+                  <option value="damaged">Damaged</option>
+                  <option value="missing">Missing</option>
+                  <option value="replaced">Replaced</option>
+                </select>
+              </div>
+              <div>
+                <div
+                  style={{
+                    fontSize: ".72rem",
+                    fontWeight: 600,
+                    color: "var(--text-3)",
+                    marginBottom: 4,
+                    textTransform: "uppercase",
+                  }}>
+                  County
+                </div>
+                <select
+                  className="input"
+                  value={countyId}
+                  onChange={(e) => setCountyId(e.target.value)}>
+                  <option value="">All</option>
+                  {counties.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <div
+                  style={{
+                    fontSize: ".72rem",
+                    fontWeight: 600,
+                    color: "var(--text-3)",
+                    marginBottom: 4,
+                    textTransform: "uppercase",
+                  }}>
+                  Affiliation
+                </div>
+                <select
+                  className="input"
+                  value={affiliationId}
+                  onChange={(e) => setAffiliationId(e.target.value)}>
+                  <option value="">All</option>
+                  {affiliations.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -242,8 +402,8 @@ export default function DeviceListPage() {
                     <Empty
                       title="No devices found"
                       sub={
-                        search
-                          ? "Try a different search"
+                        search || activeFilterCount > 0
+                          ? "Try adjusting your search or filters"
                           : "Add your first device to get started"
                       }
                       action={
