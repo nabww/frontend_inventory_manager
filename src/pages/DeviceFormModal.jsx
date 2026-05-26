@@ -30,7 +30,7 @@ const EMPTY = {
   pin: "",
   puk: "",
   network: "",
-  hasCharger: false,
+  hasCharger: 0,
 };
 
 const validate = (f) => {
