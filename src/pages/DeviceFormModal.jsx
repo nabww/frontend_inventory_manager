@@ -30,6 +30,7 @@ const EMPTY = {
   pin: "",
   puk: "",
   network: "",
+  hasCharger: false,
 };
 
 const validate = (f) => {
@@ -234,23 +235,25 @@ export default function DeviceFormModal({ device, onClose, onSuccess }) {
   const [apiErr, setApiErr] = useState("");
   const [loading, setLoading] = useState(false);
   const [showLossModal, setShowLossModal] = useState(false);
-
   const [counties, setCounties] = useState([]);
   const [affiliations, setAffiliations] = useState([]);
   const [facilities, setFacilities] = useState([]);
   const [newAff, setNewAff] = useState("");
   const [addingAff, setAddingAff] = useState(false);
   const [selectedCounty, setSelectedCounty] = useState("");
+  const [sdps, setSdps] = useState([]);
 
   useEffect(() => {
     Promise.all([
       refApi.counties(),
       refApi.affiliations(),
       refApi.facilities({ limit: 500 }),
-    ]).then(([c, a, f]) => {
+      refApi.sdps(),
+    ]).then(([c, a, f, s]) => {
       setCounties(c.data.data);
       setAffiliations(a.data.data);
       setFacilities(f.data.data);
+      setSdps(s.data.data);
     });
   }, []);
 
@@ -276,6 +279,8 @@ export default function DeviceFormModal({ device, onClose, onSuccess }) {
         pin: device.pin || "",
         puk: device.puk || "",
         network: device.network || "",
+        sdpId: device.sdp_id || "",
+        hasCharger: !!device.has_charger,
       });
     }
   }, [device]);
@@ -336,11 +341,15 @@ export default function DeviceFormModal({ device, onClose, onSuccess }) {
     }
     setLoading(true);
     try {
+      const payload = {
+        ...form,
+        sdpId: form.sdpId ? parseInt(form.sdpId, 10) : null,
+      };
       if (isEdit) {
-        await deviceApi.update(device.id, form);
+        await deviceApi.update(device.id, payload);
         toast.success("Device updated");
       } else {
-        await deviceApi.create(form);
+        await deviceApi.create(payload);
         toast.success("Device added");
       }
       onSuccess();
@@ -534,6 +543,20 @@ export default function DeviceFormModal({ device, onClose, onSuccess }) {
               ))}
             </select>
           </Field>
+          <Field label="Service Delivery Point">
+            <select
+              className="input"
+              value={form.sdpId}
+              onChange={set("sdpId")}
+              disabled={isLocked && !isAdmin}>
+              <option value="">Select SDP</option>
+              {sdps.map((sdp) => (
+                <option key={sdp.id} value={sdp.id}>
+                  {sdp.name}
+                </option>
+              ))}
+            </select>
+          </Field>
           <Field label="Assigned To (person)">
             <input
               className="input"
@@ -657,6 +680,24 @@ export default function DeviceFormModal({ device, onClose, onSuccess }) {
             </Field>
           </div>
         )}
+
+        <SectionLabel>Charger</SectionLabel>
+        <div className="toggle-wrap mb-16">
+          <label className="toggle">
+            <input
+              type="checkbox"
+              checked={form.hasCharger}
+              onChange={set("hasCharger")}
+              disabled={isLocked && !isAdmin}
+            />
+            <span className="toggle-slider" />
+          </label>
+          <span className="toggle-label">
+            {form.hasCharger
+              ? "Device has an accompanying charger"
+              : "No charger with this device"}
+          </span>
+        </div>
       </Modal>
 
       {showLossModal && (

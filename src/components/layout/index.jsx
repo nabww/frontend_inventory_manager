@@ -18,6 +18,9 @@ import {
   RiToolsLine,
   RiSendPlaneLine,
   RiContactsLine,
+  RiBarChart2Line,
+  RiBarChart2Fill,
+  RiFlashlightLine,
 } from "react-icons/ri";
 import { useAuth } from "../../contexts";
 import { useTheme } from "../../contexts";
@@ -136,6 +139,21 @@ const ADMIN_NAV = [
   { to: "/admin-contacts", icon: <RiContactsLine />, label: "Admin Contacts" },
   { to: "/users", icon: <RiTeamLine />, label: "Users" },
   { to: "/audit-log", icon: <RiFileList3Line />, label: "Audit Log" },
+  {
+    to: "/reports/sdp-gaps",
+    label: "SDP Gaps Report",
+    icon: <RiBarChart2Line />,
+  },
+  {
+    to: "/reports/sdp-matrix",
+    label: "SDP Gaps Matrix",
+    icon: <RiBarChart2Fill />,
+  },
+  {
+    to: "/reports/charger-gaps",
+    label: "Charger Gaps Report",
+    icon: <RiFlashlightLine />,
+  },
 ];
 
 // ── Sidebar ───────────────────────────────────────────────────────────────────

@@ -1435,6 +1435,8 @@ export default function DeviceDetailPage() {
           }
         />
         <F label="Assigned To" value={device.assigned_to} />
+        <F label="Service Delivery Point" value={device.sdp_name || "—"} />{" "}
+        {/* ← ADD THIS */}
         <F label="Notes" value={device.notes} />
       </Section>
 

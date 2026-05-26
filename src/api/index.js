@@ -46,6 +46,13 @@ export const refApi = {
   facility: (id) => api.get(`/facilities/${id}`),
   auditLogs: (p) => api.get("/audit-logs", { params: p }),
   escalationTargets: () => api.get("/users/escalation-targets"),
+  sdps: () => api.get("/sdp"),
+  facility: (id) => api.get(`/facilities/${id}`),
+  subCounties: (countyId) => api.get(`/counties/${countyId}/sub-counties`),
+  get: (url) => api.get(url),
+  put: (url, data) => api.put(url, data),
+  post: (url, data) => api.post(url, data),
+  patch: (url, data) => api.patch(url, data),
 };
 
 export const deviceApi = {
@@ -124,4 +131,10 @@ export const repairApi = {
   review: (id, d) => api.post(`/repairs/${id}/review`, d),
   markReturned: (id, d) => api.post(`/repairs/${id}/mark-returned`, d),
   reissue: (id, d) => api.post(`/repairs/${id}/reissue`, d),
+};
+export const chargerApi = {
+  types: () => api.get("/charger-types"),
+  get: (facilityId) => api.get(`/facilities/${facilityId}/chargers`),
+  update: (facilityId, counts) =>
+    api.put(`/facilities/${facilityId}/chargers`, { counts }),
 };

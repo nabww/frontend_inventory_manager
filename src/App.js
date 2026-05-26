@@ -20,6 +20,9 @@ import {
   AdminContactsPage,
 } from "./pages/OtherPages";
 import FacilityDetailPage from "./pages/FacilityDetailPage";
+import SDPGapsReport from "./pages/SDPGapsReport";
+import SDPDeviceMatrix from "./pages/SDPMatrix";
+import ChargerGapsReport from "./pages/ChargerGapsReport";
 
 export default function App() {
   return (
@@ -139,8 +142,15 @@ export default function App() {
                 </ProtectedRoute>
               }
             />
+            <Route path="/reports/sdp-gaps" element={<SDPGapsReport />} />
+            <Route path="/reports/sdp-matrix" element={<SDPDeviceMatrix />} />
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
+
+            <Route
+              path="/reports/charger-gaps"
+              element={<ChargerGapsReport />}
+            />
           </Routes>
         </BrowserRouter>
         <Toaster
