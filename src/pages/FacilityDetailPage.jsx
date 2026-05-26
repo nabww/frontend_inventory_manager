@@ -177,13 +177,11 @@ export default function FacilityDetailPage() {
           onClick={() => navigate("/facilities")}>
           <RiArrowLeftLine size={14} /> Back to Facilities
         </button>
-        {!editingCharger && isAdmin && (
-          <button
-            className="btn btn-outline btn-sm"
-            onClick={() => setEditingCharger(true)}>
-            Edit
-          </button>
-        )}
+        <button
+          className="btn btn-outline btn-sm"
+          onClick={() => setShowEditModal(true)}>
+          <RiEditLine size={14} /> Edit Facility
+        </button>
       </div>
 
       {/* Facility info card (your original design) */}
