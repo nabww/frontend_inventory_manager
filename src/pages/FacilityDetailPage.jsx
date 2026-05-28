@@ -59,26 +59,20 @@ export default function FacilityDetailPage() {
         .list({ facilityId: id, limit: 1000, page: 1 })
         .then((res) => {
           const devices = res.data.data || [];
-          setAllDevices(devices);
-          // Compute attached counts
           let typeA = 0,
             typeC = 0;
           devices.forEach((dev) => {
-            if (dev.has_charger) {
-              const prefix = (dev.serial_number || "")
-                .substring(0, 4)
-                .toUpperCase();
-              const isTypeC = ["R8Y", "R9PT", "BY9", "HA2"].some((p) =>
-                prefix.startsWith(p),
-              );
-              if (isTypeC) typeC++;
-              else typeA++;
+            // Be careful: has_charger may be 0/1 (number) or true/false (boolean)
+            if (dev.has_charger === 1 || dev.has_charger === true) {
+              if (dev.charger_type_id === 1) typeA++;
+              else if (dev.charger_type_id === 2) typeC++;
             }
           });
           setAttachedCounts({ typeA, typeC });
+          setAllDevices(devices);
         })
         .catch((err) =>
-          console.error("Failed to load all devices for charger count", err),
+          console.error("Failed to load devices for charger count", err),
         )
         .finally(() => setAttachedLoading(false));
     }

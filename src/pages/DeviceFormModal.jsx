@@ -31,6 +31,7 @@ const EMPTY = {
   puk: "",
   network: "",
   hasCharger: 0,
+  chargerTypeId: "",
 };
 
 const validate = (f) => {
@@ -242,6 +243,7 @@ export default function DeviceFormModal({ device, onClose, onSuccess }) {
   const [addingAff, setAddingAff] = useState(false);
   const [selectedCounty, setSelectedCounty] = useState("");
   const [sdps, setSdps] = useState([]);
+  const [chargerTypes, setChargerTypes] = useState([]);
 
   useEffect(() => {
     Promise.all([
@@ -249,11 +251,13 @@ export default function DeviceFormModal({ device, onClose, onSuccess }) {
       refApi.affiliations(),
       refApi.facilities({ limit: 500 }),
       refApi.sdps(),
-    ]).then(([c, a, f, s]) => {
+      refApi.get("/charger-types"),
+    ]).then(([c, a, f, s, ct]) => {
       setCounties(c.data.data);
       setAffiliations(a.data.data);
       setFacilities(f.data.data);
       setSdps(s.data.data);
+      setChargerTypes(ct.data.data);
     });
   }, []);
 
@@ -281,6 +285,7 @@ export default function DeviceFormModal({ device, onClose, onSuccess }) {
         network: device.network || "",
         sdpId: device.sdp_id || "",
         hasCharger: !!device.has_charger,
+        chargerTypeId: device.charger_type_id || "",
       });
     }
   }, [device]);
@@ -698,6 +703,22 @@ export default function DeviceFormModal({ device, onClose, onSuccess }) {
               : "No charger with this device"}
           </span>
         </div>
+        {form.hasCharger && (
+          <Field label="Charger Type">
+            <select
+              className="input"
+              value={form.chargerTypeId || ""}
+              onChange={set("chargerTypeId")}
+              disabled={isLocked && !isAdmin}>
+              <option value="">-- Select Type --</option>
+              {chargerTypes.map((type) => (
+                <option key={type.id} value={type.id}>
+                  {type.name}
+                </option>
+              ))}
+            </select>
+          </Field>
+        )}
       </Modal>
 
       {showLossModal && (
