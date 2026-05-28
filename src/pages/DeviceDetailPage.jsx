@@ -1436,7 +1436,22 @@ export default function DeviceDetailPage() {
         />
         <F label="Assigned To" value={device.assigned_to} />
         <F label="Service Delivery Point" value={device.sdp_name || "—"} />{" "}
-        {/* ← ADD THIS */}
+        <F
+          label="Has Charger"
+          value={device.has_charger ? "✅ Yes" : "❌ No"}
+        />
+        <F
+          label="Charger Type"
+          value={
+            device.has_charger
+              ? device.charger_type_id === 1
+                ? "Type A"
+                : device.charger_type_id === 2
+                  ? "Type C"
+                  : "Unknown"
+              : "—"
+          }
+        />
         <F label="Notes" value={device.notes} />
       </Section>
 
