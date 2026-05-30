@@ -664,7 +664,7 @@ export default function DeviceFormModal({ device, onClose, onSuccess }) {
             <Field label="PIN">
               <input
                 className="input"
-                type="password"
+                // type="password"
                 value={form.pin}
                 onChange={set("pin")}
                 placeholder="SIM PIN"
@@ -675,7 +675,7 @@ export default function DeviceFormModal({ device, onClose, onSuccess }) {
             <Field label="PUK">
               <input
                 className="input"
-                type="password"
+                // type="password"
                 value={form.puk}
                 onChange={set("puk")}
                 placeholder="SIM PUK"

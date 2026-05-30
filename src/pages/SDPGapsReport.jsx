@@ -26,7 +26,20 @@ export default function SDPGapsReport() {
     return true;
   });
 
-  const exportExcel = () => {
+  const exportExcel = async () => {
+    // 1. Log the export (fire-and-forget but we wait to ensure it's recorded)
+    try {
+      await refApi.post("/audit/report-export", {
+        reportName: "sdp_gaps",
+        filters: {
+          county: filterCounty,
+          status: filterStatus,
+        },
+      });
+    } catch (err) {
+      console.error("Audit log failed, continuing export", err);
+    }
+
     const ws = XLSX.utils.json_to_sheet(
       filtered.map((row) => ({
         "MFL Code": row.mfl_code,

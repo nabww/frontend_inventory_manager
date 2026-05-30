@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { AppShell} from "../components/layout"
+import { AppShell } from "../components/layout";
 import { refApi } from "../api";
 import { PageLoader, Empty } from "../components/common";
 import { RiDownloadLine } from "react-icons/ri";
@@ -19,7 +19,21 @@ export default function ChargerGapsReport() {
       .finally(() => setLoading(false));
   }, []);
 
-  const exportExcel = () => {
+  const exportExcel = async () => {
+    // 1. Log the export
+    try {
+      await refApi.post("/audit/report-export", {
+        reportName: "charger_gaps",
+        filters: {
+          county: filterCounty,
+          status: filterStatus, 
+        },
+      });
+    } catch (err) {
+      console.error("Audit log failed, continuing export", err);
+    }
+
+    // 2. Generate Excel (same as before)
     const sheetData = filtered.map((row) => ({
       "MFL Code": row.mfl_code,
       Facility: row.facility_name,
@@ -27,7 +41,8 @@ export default function ChargerGapsReport() {
       "Sub-County": row.sub_county || "",
       "Type A Chargers (Manual)": row.typeA_chargers_manual,
       "Type A Chargers (Attached)": row.typeA_attached,
-      "Type A Total Chargers": row.typeA_chargers_manual + row.typeA_attached,
+      "Type A Total Chargers":
+        Number(row.typeA_chargers_manual) + Number(row.typeA_attached),
       "Type A Devices": row.typeA_devices_total,
       "Type A Needed (ceil/3)": Math.ceil(row.typeA_devices_total / 3),
       "Type A Gap":
@@ -37,7 +52,8 @@ export default function ChargerGapsReport() {
           : "Gap",
       "Type C Chargers (Manual)": row.typeC_chargers_manual,
       "Type C Chargers (Attached)": row.typeC_attached,
-      "Type C Total Chargers": row.typeC_chargers_manual + row.typeC_attached,
+      "Type C Total Chargers":
+        Number(row.typeC_chargers_manual) + Number(row.typeC_attached),
       "Type C Devices": row.typeC_devices_total,
       "Type C Needed (ceil/3)": Math.ceil(row.typeC_devices_total / 3),
       "Type C Gap":
@@ -127,9 +143,11 @@ export default function ChargerGapsReport() {
               ) : (
                 filtered.map((row) => {
                   const typeATotal =
-                    row.typeA_chargers_manual + row.typeA_attached;
+                    Number(row.typeA_chargers_manual) +
+                    Number(row.typeA_attached);
                   const typeCTotal =
-                    row.typeC_chargers_manual + row.typeC_attached;
+                    Number(row.typeC_chargers_manual) +
+                    Number(row.typeC_attached);
                   const typeANeeded = Math.ceil(row.typeA_devices_total / 3);
                   const typeCNeeded = Math.ceil(row.typeC_devices_total / 3);
                   const typeAGap = typeATotal < typeANeeded;

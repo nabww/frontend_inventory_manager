@@ -19,7 +19,20 @@ export default function SDPDeviceMatrix() {
       .finally(() => setLoading(false));
   }, []);
 
-  const exportExcel = () => {
+  const exportExcel = async () => {
+    // 1. Log the export
+    try {
+      await refApi.post("/audit/report-export", {
+        reportName: "sdp_matrix",
+        filters: {
+          // optional: add any filters like county, etc. if you have them on this page
+        },
+      });
+    } catch (err) {
+      console.error("Audit log failed, continuing export", err);
+    }
+
+    // 2. Generate the Excel file (same as before)
     if (!data) return;
     const { sdps, facilities } = data;
     const sheetData = facilities.map((f) => {
