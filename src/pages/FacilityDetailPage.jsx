@@ -178,7 +178,7 @@ export default function FacilityDetailPage() {
         </button>
       </div>
 
-      {/* Facility info card (your original design) */}
+      {/* Facility info card */}
       <div className="card mb-22">
         <div
           className="card-body"
@@ -392,32 +392,21 @@ export default function FacilityDetailPage() {
           <table className="table">
             <thead>
               <tr>
-                <th>Service Delivery Point</th>
-                <th>Devices Assigned</th>
-                <th>Providers</th>
+                <th>SDP</th>
+                <th>Providers (Manual entries)</th>
+                <th>Assigned Providers</th>
+                <th>Devices</th>
               </tr>
             </thead>
             <tbody>
-              {statsLoading ? (
-                <SkeletonRows cols={3} rows={3} />
-              ) : sdpStats.length === 0 ? (
-                <tr>
-                  <td colSpan={3}>
-                    <Empty
-                      title="No SDP data"
-                      sub="Configure SDPs in facility settings"
-                    />
-                  </td>
+              {sdpStats.map((stat) => (
+                <tr key={stat.id}>
+                  <td>{stat.name}</td>
+                  <td>{stat.provider_count}</td>
+                  <td>{stat.assigned_providers}</td>
+                  <td>{stat.device_count}</td>
                 </tr>
-              ) : (
-                sdpStats.map((stat) => (
-                  <tr key={stat.id}>
-                    <td>{stat.name}</td>
-                    <td>{stat.device_count}</td>
-                    <td>{stat.provider_count}</td>
-                  </tr>
-                ))
-              )}
+              ))}
             </tbody>
           </table>
         </div>
